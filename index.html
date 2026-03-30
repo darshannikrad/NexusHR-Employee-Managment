@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NexusHR — Employee Directory</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="ambient">
+  <div class="blob blob-1"></div>
+  <div class="blob blob-2"></div>
+  <div class="blob blob-3"></div>
+</div>
+
+<nav class="navbar" id="navbar"></nav>
+
+<main style="position:relative;z-index:1;">
+  <section class="hero">
+    <div class="hero-eyebrow">
+      <span class="dot-pulse"></span>
+      Cloud-Native · Serverless · AWS
+    </div>
+    <h1 class="hero-title">
+      Your People,<br>
+      <span class="title-accent">Organized.</span>
+    </h1>
+    <p class="hero-sub">A full-stack serverless employee management system built on AWS Lambda, DynamoDB, S3 and API Gateway.</p>
+    <div class="hero-actions">
+      <a href="employee.html" class="btn-primary">View Directory <span>→</span></a>
+      <a href="operations.html" class="btn-ghost">Manage Employees</a>
+    </div>
+
+    <div class="hero-stats">
+      <div class="stat">
+        <div class="stat-icon">🗄️</div>
+        <div class="stat-label">DynamoDB</div>
+        <div class="stat-desc">Real-time storage</div>
+      </div>
+      <div class="stat-div"></div>
+      <div class="stat">
+        <div class="stat-icon">⚡</div>
+        <div class="stat-label">Lambda</div>
+        <div class="stat-desc">Serverless compute</div>
+      </div>
+      <div class="stat-div"></div>
+      <div class="stat">
+        <div class="stat-icon">🪣</div>
+        <div class="stat-label">S3 Bucket</div>
+        <div class="stat-desc">Photo storage</div>
+      </div>
+      <div class="stat-div"></div>
+      <div class="stat">
+        <div class="stat-icon">🌐</div>
+        <div class="stat-label">API Gateway</div>
+        <div class="stat-desc">REST endpoints</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="features">
+    <div class="features-grid">
+      <div class="feature-card" style="--delay:0s">
+        <div class="feature-num">01</div>
+        <div class="feature-icon-wrap">👥</div>
+        <h3>Employee Directory</h3>
+        <p>Browse all employees in a clean, searchable card grid with photos, roles, and department info.</p>
+        <a href="employee.html" class="feature-link">View Directory →</a>
+      </div>
+      <div class="feature-card" style="--delay:.1s">
+        <div class="feature-num">02</div>
+        <div class="feature-icon-wrap">➕</div>
+        <h3>Add Employees</h3>
+        <p>Onboard new hires with name, email, role, department and a profile photo — auto-ID generated.</p>
+        <a href="operations.html" class="feature-link">Add Now →</a>
+      </div>
+      <div class="feature-card" style="--delay:.2s">
+        <div class="feature-num">03</div>
+        <div class="feature-icon-wrap">🗑️</div>
+        <h3>Remove Records</h3>
+        <p>Cleanly offboard employees by their unique auto-generated Employee ID with a single click.</p>
+        <a href="operations.html" class="feature-link">Manage →</a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="footer">
+  <div class="footer-inner">NexusHR — Built with ❤️ by Yash Nimbalkar</div>
+</footer>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<script src="auth.js"></script>
+<script>
+  requireAuth();
+  buildNavbar("index.html");
+</script>
+</body>
+</html>

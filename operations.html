@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Operations — NexusHR</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="ambient">
+  <div class="blob blob-1"></div>
+  <div class="blob blob-2"></div>
+  <div class="blob blob-3"></div>
+</div>
+
+<nav class="navbar" id="navbar"></nav>
+
+<main style="position:relative;z-index:1;">
+  <div class="page-header">
+    <div class="page-eyebrow">Employee Operations</div>
+    <h1 class="page-title">Manage</h1>
+    <p class="page-sub">Add new employees or remove existing records</p>
+  </div>
+
+  <div class="ops-layout">
+
+    <!-- ADD -->
+    <div class="ops-panel add-panel">
+      <div class="panel-title">
+        <div class="panel-title-icon add-icon-bg">➕</div>
+        Add Employee
+      </div>
+      <p class="panel-sub">Fill in the details. An Employee ID will be auto-generated.</p>
+
+      <div class="form-input-row">
+        <div class="form-group">
+          <label class="form-label">Full Name *</label>
+          <input type="text" class="form-input" id="name" placeholder="e.g. Sarah Connor">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email *</label>
+          <input type="email" class="form-input" id="email" placeholder="sarah@company.com">
+        </div>
+      </div>
+      <div class="form-input-row">
+        <div class="form-group">
+          <label class="form-label">Role *</label>
+          <input type="text" class="form-input" id="role" placeholder="e.g. Software Engineer">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Department *</label>
+          <input type="text" class="form-input" id="department" placeholder="e.g. Engineering">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Profile Photo <span style="color:var(--text-muted);font-weight:400;text-transform:none;letter-spacing:0">— optional, max 1MB</span></label>
+        <div class="file-upload" id="dropZone">
+          <input type="file" id="photo" accept="image/*" onchange="handleFileSelect(this)">
+          <div id="uploadContent">
+            <div class="upload-icon">📷</div>
+            <div class="upload-text"><strong>Click to upload</strong> or drag & drop</div>
+            <div class="upload-sub">PNG, JPG, WEBP — max 1 MB</div>
+          </div>
+          <img id="imagePreview" alt="Preview">
+        </div>
+      </div>
+      <button class="btn-submit" id="addBtn" onclick="addEmployee()">Add to Directory</button>
+    </div>
+
+    <!-- DELETE -->
+    <div class="ops-panel delete-panel">
+      <div class="panel-title">
+        <div class="panel-title-icon del-icon-bg">🗑️</div>
+        Remove Employee
+      </div>
+      <p class="panel-sub">Enter the Employee ID to permanently remove them.</p>
+
+      <div class="form-group" style="margin-top:8px">
+        <label class="form-label">Employee ID *</label>
+        <input type="text" class="form-input" id="deleteEmpId" placeholder="e.g. EMP-EN-2025-AB12">
+      </div>
+
+      <div class="warning-box">
+        <strong>⚠️ Warning:</strong> This action is irreversible. The employee record will be permanently deleted.
+      </div>
+
+      <div style="margin:24px 0">
+        <label class="form-label" style="margin-bottom:12px;display:block">Don't know the ID?</label>
+        <a href="employee.html" class="btn-ghost" style="display:inline-flex;text-decoration:none;width:100%;justify-content:center">
+          Browse Directory to find ID →
+        </a>
+      </div>
+
+      <button class="btn-delete-full" id="deleteBtn" onclick="doDelete()">🗑️ Remove Employee</button>
+    </div>
+
+  </div>
+</main>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<footer class="footer">
+  <div class="footer-inner">NexusHR — Built with ❤️ by Yash Nimbalkar</div>
+</footer>
+
+<script src="auth.js"></script>
+<script>
+requireAuth();
+buildNavbar("operations.html");
+
+function handleFileSelect(input) {
+  const file = input.files[0]; if (!file) return;
+  if (file.size > 1024 * 1024) { showToast("Image must be under 1MB", "error"); input.value = ""; return; }
+  const reader = new FileReader();
+  reader.onload = e => {
+    const p = document.getElementById("imagePreview");
+    p.src = e.target.result; p.style.display = "block";
+    document.getElementById("uploadContent").style.display = "none";
+    document.getElementById("dropZone").classList.add("has-file");
+  };
+  reader.readAsDataURL(file);
+}
+
+const dz = document.getElementById("dropZone");
+dz.addEventListener("dragover",  e => { e.preventDefault(); dz.style.borderColor = "var(--accent)"; });
+dz.addEventListener("dragleave", () => { dz.style.borderColor = ""; });
+dz.addEventListener("drop",      e => {
+  e.preventDefault(); dz.style.borderColor = "";
+  const file = e.dataTransfer.files[0];
+  if (file?.type.startsWith("image/")) {
+    const inp = document.getElementById("photo");
+    const dt  = new DataTransfer(); dt.items.add(file); inp.files = dt.files;
+    handleFileSelect(inp);
+  }
+});
+
+async function addEmployee() {
+  const name       = document.getElementById("name").value.trim();
+  const email      = document.getElementById("email").value.trim();
+  const role       = document.getElementById("role").value.trim();
+  const department = document.getElementById("department").value.trim();
+  const file       = document.getElementById("photo").files[0];
+
+  if (!name || !email || !role || !department) { showToast("Please fill in all required fields", "error"); return; }
+
+  const btn = document.getElementById("addBtn");
+  btn.innerHTML = '<div class="spinner"></div> Adding…'; btn.disabled = true;
+
+  try {
+    let imageBase64 = null, imageType = null;
+    if (file) { imageBase64 = await getBase64(file); imageType = file.type; }
+
+    const res  = await fetch(API_URL, { method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({ name, email, role, department, imageBase64, imageType }) });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || "Failed");
+
+    showToast(`✓ ${name} added! ID: ${data.empID}`, "success");
+    ["name","email","role","department"].forEach(id => document.getElementById(id).value = "");
+    document.getElementById("photo").value = "";
+    document.getElementById("imagePreview").style.display = "none";
+    document.getElementById("uploadContent").style.display = "";
+    document.getElementById("dropZone").classList.remove("has-file");
+
+  } catch(e) {
+    showToast(e.message || "Failed to add employee", "error");
+  } finally {
+    btn.innerHTML = "Add to Directory"; btn.disabled = false;
+  }
+}
+
+async function doDelete() {
+  const empID = document.getElementById("deleteEmpId").value.trim();
+  if (!empID) { showToast("Enter an Employee ID", "error"); return; }
+
+  const btn = document.getElementById("deleteBtn");
+  btn.innerHTML = '<div class="spinner"></div> Removing…'; btn.disabled = true;
+
+  try {
+    const res = await fetch(API_URL, { method: "DELETE", headers: {"Content-Type": "application/json"}, body: JSON.stringify({ empID }) });
+    if (!res.ok) throw new Error();
+    showToast("Employee removed successfully", "success");
+    document.getElementById("deleteEmpId").value = "";
+  } catch {
+    showToast("Failed to delete employee", "error");
+  } finally {
+    btn.innerHTML = "🗑️ Remove Employee"; btn.disabled = false;
+  }
+}
+</script>
+</body>
+</html>

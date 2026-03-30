@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Update Employee — NexusHR</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="ambient">
+  <div class="blob blob-1"></div>
+  <div class="blob blob-2"></div>
+  <div class="blob blob-3"></div>
+</div>
+
+<nav class="navbar" id="navbar"></nav>
+
+<main style="position:relative;z-index:1;">
+
+  <div class="page-header">
+    <div class="page-eyebrow">Edit Records</div>
+    <h1 class="page-title">Update Employee</h1>
+    <p class="page-sub">Modify an existing employee's details using their Employee ID</p>
+  </div>
+
+  <div class="update-wrap">
+    <div class="update-panel">
+
+      <!-- Info banner -->
+      <div class="update-info-box">
+        <span>ℹ️</span>
+        <div>
+          <strong>Partial updates supported.</strong>
+          Only the fields you fill in will be updated — leave others blank to keep them unchanged.
+        </div>
+      </div>
+
+      <!-- Employee ID (required) -->
+      <div class="form-group">
+        <label class="form-label">Employee ID <span style="color:var(--accent-danger)">*</span></label>
+        <input type="text" class="form-input" id="empID"
+               placeholder="e.g. EMP-EN-2025-AB12"
+               style="font-family:monospace;font-size:14px;">
+        <div style="margin-top:7px;font-size:12px;color:var(--text-muted)">
+          Don't know the ID? <a href="employee.html" style="color:var(--accent);font-weight:600;text-decoration:none">Browse the Directory →</a>
+        </div>
+      </div>
+
+      <div class="update-divider">
+        <span>Fields to update</span>
+      </div>
+
+      <!-- Fields grid -->
+      <div class="form-input-row">
+        <div class="form-group">
+          <label class="form-label">Full Name</label>
+          <input type="text" class="form-input" id="name" placeholder="New name (optional)">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email</label>
+          <input type="email" class="form-input" id="email" placeholder="New email (optional)">
+        </div>
+      </div>
+
+      <div class="form-input-row">
+        <div class="form-group">
+          <label class="form-label">Role</label>
+          <input type="text" class="form-input" id="role" placeholder="New role (optional)">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Department</label>
+          <input type="text" class="form-input" id="department" placeholder="New department (optional)">
+        </div>
+      </div>
+
+      <!-- Submit button -->
+      <button class="btn-update-full" id="updateBtn" onclick="runUpdate()">
+        ✏️ Save Changes
+      </button>
+
+      <!-- Inline result box -->
+      <div class="result-box" id="resultBox"></div>
+
+    </div>
+
+    <!-- Quick-look card: last updated employee -->
+    <div id="successCard" style="display:none;margin-top:18px;">
+      <div class="ops-panel" style="padding:28px 32px;animation:fadeUp 0.4s var(--transition) both;">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:4px;">
+          <div style="width:36px;height:36px;border-radius:50%;background:var(--gradient-accent);display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-weight:800;font-size:14px;color:#fff;" id="successInitials">?</div>
+          <div>
+            <div style="font-family:var(--font-display);font-weight:700;font-size:15px;color:var(--text-primary);" id="successName">—</div>
+            <div style="font-size:12px;color:var(--text-muted);" id="successRole">—</div>
+          </div>
+        </div>
+        <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border);display:flex;gap:10px;flex-wrap:wrap;">
+          <span class="emp-id-badge" id="successId">—</span>
+          <span class="dept-badge blue" id="successDept">—</span>
+        </div>
+        <a href="employee.html" class="feature-link" style="display:inline-flex;margin-top:16px;">View in Directory →</a>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<footer class="footer">
+  <div class="footer-inner">NexusHR — Built with ❤️ by Yash Nimbalkar</div>
+</footer>
+
+<script src="auth.js"></script>
+<script>
+requireAuth();
+buildNavbar("update.html");
+
+async function runUpdate() {
+  const empID      = document.getElementById("empID").value.trim();
+  const name       = document.getElementById("name").value.trim();
+  const email      = document.getElementById("email").value.trim();
+  const role       = document.getElementById("role").value.trim();
+  const department = document.getElementById("department").value.trim();
+
+  const resultBox  = document.getElementById("resultBox");
+  const btn        = document.getElementById("updateBtn");
+
+  // hide previous result
+  resultBox.className = "result-box";
+  resultBox.innerHTML = "";
+
+  if (!empID) {
+    showError("Please enter an Employee ID.");
+    return;
+  }
+
+  const data = {};
+  if (name)       data.name       = name;
+  if (email)      data.email      = email;
+  if (role)       data.role       = role;
+  if (department) data.department = department;
+
+  if (!Object.keys(data).length) {
+    showError("Fill in at least one field to update.");
+    return;
+  }
+
+  btn.innerHTML = '<div class="spinner"></div> Saving…';
+  btn.disabled  = true;
+
+  try {
+    const res    = await fetch(
+      `https://8arwk9zb75.execute-api.eu-north-1.amazonaws.com/updateStage/employee/${empID}`,
+      {
+        method:  "PUT",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify(data)
+      }
+    );
+    const result = await res.json();
+    if (!res.ok) throw new Error(result.message || "Update failed");
+
+    // Show inline success
+    showResultBox("✓ " + (result.message || "Employee updated successfully!"), "success");
+    showToast("Employee updated successfully!", "success");
+
+    // Populate the success card
+    const initials = (data.name || empID).split(" ").map(w => w[0]).slice(0,2).join("").toUpperCase();
+    document.getElementById("successInitials").textContent = initials;
+    document.getElementById("successName").textContent     = data.name       || "—";
+    document.getElementById("successRole").textContent     = data.role       || "—";
+    document.getElementById("successId").textContent       = empID;
+    document.getElementById("successDept").textContent     = data.department || "—";
+    document.getElementById("successCard").style.display   = "";
+
+  } catch(e) {
+    showResultBox("✕ " + (e.message || "Error updating employee"), "error");
+    showToast(e.message || "Update failed", "error");
+  } finally {
+    btn.innerHTML = "✏️ Save Changes";
+    btn.disabled  = false;
+  }
+}
+
+function showError(msg) {
+  const resultBox = document.getElementById("resultBox");
+  showResultBox("✕ " + msg, "error");
+}
+
+function showResultBox(msg, type) {
+  const box = document.getElementById("resultBox");
+  box.className = `result-box show ${type}`;
+  box.innerHTML = msg;
+}
+</script>
+</body>
+</html>

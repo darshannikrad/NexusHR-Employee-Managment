@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>About — NexusHR</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="ambient"><div class="blob blob-1"></div><div class="blob blob-2"></div></div>
+<nav class="navbar" id="navbar"></nav>
+
+<main style="position:relative;z-index:1;">
+  <div class="page-header">
+    <div class="page-eyebrow">Project Details</div>
+    <h1 class="page-title">About NexusHR</h1>
+    <p class="page-sub">A serverless, cloud-native employee management system built on AWS</p>
+  </div>
+
+  <div class="project-grid">
+    <div class="info-card full-width" style="background:linear-gradient(135deg,var(--accent-light),var(--accent-2-light));border-color:var(--border-accent)">
+      <h2>👋 About the Builder</h2>
+      <p>Hi, I'm <strong style="color:var(--text-primary)">Yash Nimbalkar</strong>, a third-year engineering student at PICT, Pune. I built NexusHR to showcase my AWS cloud skills — connecting a serverless backend with a modern frontend to create a real-world employee management system.</p>
+    </div>
+    <div class="info-card">
+      <h2>🏗️ Architecture</h2>
+      <p style="margin-bottom:18px">Fully serverless on AWS — no servers to manage, no idle costs. Scales automatically with demand.</p>
+      <div class="tech-chips">
+        <span class="chip teal">AWS Lambda</span>
+        <span class="chip teal">DynamoDB</span>
+        <span class="chip teal">S3</span>
+        <span class="chip teal">API Gateway</span>
+        <span class="chip blue">Python</span>
+        <span class="chip blue">HTML/CSS/JS</span>
+      </div>
+    </div>
+    <div class="info-card">
+      <h2>✨ Features</h2>
+      <p>Employees are stored in DynamoDB with auto-generated IDs like <code style="font-size:12px;background:var(--accent-light);padding:2px 7px;border-radius:4px;color:var(--accent)">EMP-EN-2025-AB12</code>. Profile photos are stored in S3. CRUD operations exposed via REST API Gateway endpoints. Auth with localStorage sessions.</p>
+    </div>
+    <div class="info-card">
+      <h2>🗺️ Frontend Stack</h2>
+      <div class="tech-chips" style="margin-bottom:16px">
+        <span class="chip blue">HTML5</span>
+        <span class="chip blue">CSS3</span>
+        <span class="chip blue">JavaScript ES6+</span>
+        <span class="chip amber">Hosted on S3</span>
+      </div>
+      <p>Lightweight, dependency-free frontend for fast loads. Light & dark themes. Drag-and-drop image upload. Session-based auth.</p>
+    </div>
+    <div class="info-card">
+      <h2>🚀 Future Scope</h2>
+      <p>Plans include: department filters, edit employee details, pagination, authentication with AWS Cognito, analytics dashboards and export to CSV.</p>
+    </div>
+  </div>
+</main>
+
+<footer class="footer"><div class="footer-inner">NexusHR — Built with ❤️ by Yash Nimbalkar</div></footer>
+<div class="toast-container" id="toastContainer"></div>
+<script src="auth.js"></script>
+<script>requireAuth(); buildNavbar("project.html");</script>
+</body>
+</html>
