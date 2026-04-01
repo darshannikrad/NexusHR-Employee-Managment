@@ -71,10 +71,22 @@
   </div>
 </div>
 
+<!-- Photo Lightbox -->
+<div class="lightbox-overlay" id="lightbox" onclick="closeLightbox()">
+  <button class="lightbox-close" onclick="closeLightbox()">✕</button>
+  <div class="lightbox-inner" onclick="event.stopPropagation()">
+    <img id="lightboxImg" src="" alt="" class="lightbox-img">
+    <div class="lightbox-caption">
+      <div class="lightbox-name" id="lightboxName"></div>
+      <div class="lightbox-meta" id="lightboxMeta"></div>
+    </div>
+  </div>
+</div>
+
 <div class="toast-container" id="toastContainer"></div>
 
 <footer class="footer">
-  <div class="footer-inner">NexusHR — Built with ❤️ by YUD</div>
+  <div class="footer-inner">NexusHR — Built with ❤️ by Yash Nimbalkar</div>
 </footer>
 
 <script src="auth.js"></script>
@@ -108,7 +120,7 @@ function renderCards(list) {
     <div class="emp-card" style="animation-delay:${i * 0.055}s">
       <div class="emp-card-header">
         ${emp.photoUrl
-          ? `<img src="${emp.photoUrl}" class="emp-avatar" alt="${emp.name}">`
+          ? `<img src="${emp.photoUrl}" class="emp-avatar" alt="${emp.name}" onclick="openPhoto('${emp.photoUrl}','${(emp.name||'').replace(/'/g,"\\'")}','${emp.role||''}','${emp.department||''}')" title="Click to view photo">`
           : `<div class="emp-avatar-placeholder">${initials(emp.name)}</div>`}
         <div>
           <div class="emp-name">${emp.name ?? "—"}</div>
@@ -185,6 +197,21 @@ async function confirmDelete() {
   }
 }
 document.getElementById("deleteModal").addEventListener("click", e => { if (e.target.id === "deleteModal") closeModal(); });
+
+// ---- LIGHTBOX ----
+function openPhoto(url, name, role, dept) {
+  document.getElementById("lightboxImg").src   = url;
+  document.getElementById("lightboxName").textContent = name;
+  document.getElementById("lightboxMeta").textContent = [role, dept].filter(Boolean).join(" · ");
+  document.getElementById("lightbox").classList.add("open");
+  document.body.style.overflow = "hidden";
+}
+function closeLightbox() {
+  document.getElementById("lightbox").classList.remove("open");
+  document.body.style.overflow = "";
+  setTimeout(() => { document.getElementById("lightboxImg").src = ""; }, 300);
+}
+document.addEventListener("keydown", e => { if (e.key === "Escape") { closeLightbox(); closeModal(); } });
 
 loadAll();
 </script>
