@@ -1,5 +1,5 @@
 /*
-  script.js — NexusHR (FINAL WORKING GRID VERSION)
+  script.js — NexusHR (FINAL STABLE VERSION)
 */
 
 // 🔐 Protect page
@@ -11,13 +11,13 @@ requireAuth();
 let allEmployees = [];
 
 /* ============================================
-   LOAD ALL EMPLOYEES (FIXED)
+   LOAD EMPLOYEES (GRID + IMAGE FIX)
 ============================================ */
 async function loadEmployees() {
-  const tbody = document.getElementById("employeeTableBody");
-  if (!tbody) return;
+  const grid = document.getElementById("employeeGrid");
+  if (!grid) return;
 
-  tbody.innerHTML = "";
+  grid.innerHTML = "";
 
   const BUCKET_URL = "https://employee-profile-yash-2026-project.s3.eu-north-1.amazonaws.com/";
 
@@ -25,41 +25,51 @@ async function loadEmployees() {
     const res  = await authFetch(API_URL);
     const raw  = await res.json();
 
+    console.log("DATA:", raw);
+
     const list = Array.isArray(raw.employees)
       ? raw.employees
       : (Array.isArray(raw) ? raw : []);
 
     if (!list.length) {
-      tbody.innerHTML = `<tr><td colspan="6">No employees found</td></tr>`;
+      grid.innerHTML = `<div>No employees found</div>`;
       return;
     }
 
     list.forEach(emp => {
       const imageUrl = emp.photoUrl
-        ? BUCKET_URL + emp.photoUrl   // 🔥 ONLY FIX
+        ? BUCKET_URL + emp.photoUrl
         : null;
 
-      const row = document.createElement("tr");
-      row.innerHTML = `
-        <td>${emp.name ?? "-"}</td>
-        <td>${emp.email ?? "-"}</td>
-        <td>${emp.role ?? "-"}</td>
-        <td>${emp.department ?? "-"}</td>
-        <td>
+      const card = document.createElement("div");
+      card.className = "emp-card";
+
+      card.innerHTML = `
+        <div class="emp-card-header">
           ${
             imageUrl
-              ? `<img src="${imageUrl}" height="50" />`
-              : "-"
+              ? `<img src="${imageUrl}" class="emp-avatar" />`
+              : `<div class="emp-avatar-placeholder">${(emp.name || "?")[0]}</div>`
           }
-        </td>
-        <td>${emp.empID ?? "-"}</td>
+          <div>
+            <div class="emp-name">${emp.name ?? "-"}</div>
+            <div class="emp-role">${emp.role ?? "-"}</div>
+          </div>
+        </div>
+
+        <div class="emp-card-body">
+          <div>${emp.email ?? "-"}</div>
+          <div>${emp.department ?? "-"}</div>
+          <div>${emp.empID ?? "-"}</div>
+        </div>
       `;
-      tbody.appendChild(row);
+
+      grid.appendChild(card);
     });
 
   } catch (e) {
-    console.error(e);
-    tbody.innerHTML = `<tr><td colspan="6">Error loading employees</td></tr>`;
+    console.error("ERROR:", e);
+    grid.innerHTML = `<div>Could not load employees</div>`;
   }
 }
 
@@ -103,7 +113,7 @@ async function addEmployee() {
 
     showToast("Employee added!", "success");
 
-    loadAll(); // 🔥 refresh UI
+    loadEmployees(); // 🔥 FIXED
 
   } catch (e) {
     console.error(e);
@@ -134,7 +144,7 @@ async function confirmDelete() {
     showToast("Employee removed", "success");
 
     closeModal();
-    loadAll(); // 🔥 refresh UI
+    loadEmployees(); // 🔥 FIXED
 
   } catch (e) {
     console.error(e);
@@ -191,7 +201,7 @@ async function updateEmployee() {
 
     showToast("Employee updated!", "success");
 
-    loadAll(); // 🔥 refresh UI
+    loadEmployees(); // 🔥 FIXED
 
   } catch (e) {
     console.error(e);
