@@ -15,14 +15,11 @@ const config = {
 
 /* ============================================
    SESSION  (localStorage + expiry check)
-   localStorage so session survives tab close.
-   Token is still validated on every API call by
-   API Gateway — localStorage is just convenience storage.
 ============================================ */
 function getToken() {
   const expiry = localStorage.getItem("nexushr_token_expiry");
   if (expiry && Date.now() > parseInt(expiry)) {
-    clearSession(); // expired — clean up
+    clearSession();
     return null;
   }
   return localStorage.getItem("nexushr_idToken");
@@ -30,7 +27,6 @@ function getToken() {
 
 function setToken(idToken, expiresIn = 3600) {
   localStorage.setItem("nexushr_idToken", idToken);
-  // expiresIn is seconds (Cognito default = 3600 = 1 hour)
   localStorage.setItem("nexushr_token_expiry", Date.now() + expiresIn * 1000);
 }
 
@@ -42,8 +38,9 @@ function clearSession() {
 
 /* ============================================
    LOGIN (COGNITO)
+   Called as: loginUser(email, password)
 ============================================ */
-async function login(email, password) {
+async function loginUser(email, password) {
   const url = `https://cognito-idp.${config.region}.amazonaws.com/`;
 
   const response = await fetch(url, {
@@ -65,33 +62,36 @@ async function login(email, password) {
   const data = await response.json();
 
   if (data.ChallengeName === "NEW_PASSWORD_REQUIRED") {
-    // Store session token for the password-change step
+    // Save session so respondToNewPasswordChallenge can use it
     localStorage.setItem("nexushr_challenge", JSON.stringify({
       session: data.Session,
       username: email
     }));
-    return { challenge: "NEW_PASSWORD_REQUIRED" };
+    // Return the raw Cognito response so login.html can check ChallengeName directly
+    return data;
   }
 
   if (data.AuthenticationResult) {
     setToken(data.AuthenticationResult.IdToken, data.AuthenticationResult.ExpiresIn);
-    return { success: true };
+    return data;
   }
 
-  // Surface Cognito error as friendly message
+  // Throw a readable error so login.html catch block gets it
   const code = data.__type || "";
-  if (code.includes("NotAuthorizedException"))   return { success: false, message: "Incorrect email or password." };
-  if (code.includes("UserNotFoundException"))     return { success: false, message: "No account found with this email." };
-  if (code.includes("UserNotConfirmedException")) return { success: false, message: "Account not confirmed. Contact your administrator." };
-  return { success: false, message: data.message || "Sign-in failed." };
+  if (code.includes("NotAuthorizedException"))   throw new Error("Incorrect email or password.");
+  if (code.includes("UserNotFoundException"))     throw new Error("No account found with this email.");
+  if (code.includes("UserNotConfirmedException")) throw new Error("Account not confirmed. Contact your administrator.");
+  throw new Error(data.message || "Sign-in failed.");
 }
 
 /* ============================================
    HANDLE NEW PASSWORD CHALLENGE
+   Called as: respondToNewPasswordChallenge(sessionData, newPassword)
+   sessionData = the raw Cognito response from loginUser()
 ============================================ */
-async function respondToNewPassword(newPassword) {
+async function respondToNewPasswordChallenge(sessionData, newPassword) {
   const stored = JSON.parse(localStorage.getItem("nexushr_challenge") || "null");
-  if (!stored) return { success: false, message: "No pending challenge. Please sign in again." };
+  if (!stored) throw new Error("No pending challenge. Please sign in again.");
 
   const url = `https://cognito-idp.${config.region}.amazonaws.com/`;
 
@@ -117,18 +117,15 @@ async function respondToNewPassword(newPassword) {
   if (data.AuthenticationResult) {
     localStorage.removeItem("nexushr_challenge");
     setToken(data.AuthenticationResult.IdToken, data.AuthenticationResult.ExpiresIn);
-    return { success: true };
+    return data;
   }
 
-  return { success: false, message: data.message || "Failed to set password." };
+  throw new Error(data.message || "Failed to set new password.");
 }
 
 /* ============================================
-   AUTH FETCH (SECURE API CALLS)
-
-   IMPORTANT: Cognito Authorizer expects the raw JWT
-   in the Authorization header — NOT "Bearer <token>".
-   Sending "Bearer ..." causes 401 Unauthorized.
+   AUTH FETCH — attaches JWT to every API call
+   FIX: Cognito Authorizer needs raw token, NOT "Bearer <token>"
 ============================================ */
 async function authFetch(url, options = {}) {
   const token = getToken();
@@ -142,13 +139,13 @@ async function authFetch(url, options = {}) {
     headers: {
       "Content-Type": "application/json",
       ...(options.headers || {}),
-     "Authorization": `Bearer ${token}`   // ← raw token, no "Bearer" prefix
+      "Authorization": token        // ← raw JWT, no "Bearer" prefix
     }
   });
 }
 
 /* ============================================
-   AUTH GUARD
+   AUTH GUARD — call at top of protected pages
 ============================================ */
 function requireAuth() {
   if (!getToken()) {
@@ -188,7 +185,7 @@ function toggleTheme() {
 }
 
 /* ============================================
-   TOAST  (proper DOM — replaces the alert() hack)
+   TOAST
 ============================================ */
 function showToast(message, type = "info", duration = 3500) {
   let container = document.getElementById("toastContainer");
@@ -198,13 +195,11 @@ function showToast(message, type = "info", duration = 3500) {
     container.className = "toast-container";
     document.body.appendChild(container);
   }
-
   const icons = { success: "✓", error: "✕", info: "ℹ" };
   const toast = document.createElement("div");
   toast.className = `toast ${type}`;
   toast.innerHTML = `<span>${icons[type] || "ℹ"}</span><span>${message}</span>`;
   container.appendChild(toast);
-
   setTimeout(() => {
     toast.style.transition = "all 0.3s ease";
     toast.style.opacity = "0";
@@ -214,7 +209,7 @@ function showToast(message, type = "info", duration = 3500) {
 }
 
 /* ============================================
-   FILE TO BASE64 (used by addEmployee)
+   FILE TO BASE64
 ============================================ */
 function getBase64(file) {
   return new Promise((resolve, reject) => {
