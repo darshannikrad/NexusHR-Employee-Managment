@@ -1,40 +1,172 @@
 /* ============================================
-   NEXUSHR — auth.js
-   Handles: login, signup, logout, theme toggle, user menu
-   Uses: localStorage for session simulation
+   NEXUSHR — auth.js (REAL AUTH - COGNITO)
 ============================================ */
 
 const API_URL = "https://8arwk9zb75.execute-api.eu-north-1.amazonaws.com/Dev/employee";
 
-/* ---- DEMO CREDENTIALS ---- */
-const DEMO_USER = { email: "demo@nexushr.com", password: "demo1234", name: "Demo User" };
+/* ============================================
+   COGNITO CONFIG
+============================================ */
+const config = {
+  region: "eu-north-1",
+  userPoolId: "eu-north-1_ubj9SI8XP",
+  clientId: "kvbcpsgg1hrv0gls26e33mk8s"
+};
 
 /* ============================================
-   SESSION HELPERS
+   SESSION  (localStorage + expiry check)
+   localStorage so session survives tab close.
+   Token is still validated on every API call by
+   API Gateway — localStorage is just convenience storage.
 ============================================ */
-function getSession() {
-  try { return JSON.parse(localStorage.getItem("nexushr_session") || "null"); } catch { return null; }
-}
-function setSession(user) {
-  localStorage.setItem("nexushr_session", JSON.stringify(user));
-}
-function clearSession() {
-  localStorage.removeItem("nexushr_session");
+function getToken() {
+  const expiry = localStorage.getItem("nexushr_token_expiry");
+  if (expiry && Date.now() > parseInt(expiry)) {
+    clearSession(); // expired — clean up
+    return null;
+  }
+  return localStorage.getItem("nexushr_idToken");
 }
 
-/* ---- Get users store ---- */
-function getUsers() {
-  try { return JSON.parse(localStorage.getItem("nexushr_users") || "[]"); } catch { return []; }
+function setToken(idToken, expiresIn = 3600) {
+  localStorage.setItem("nexushr_idToken", idToken);
+  // expiresIn is seconds (Cognito default = 3600 = 1 hour)
+  localStorage.setItem("nexushr_token_expiry", Date.now() + expiresIn * 1000);
 }
-function saveUsers(users) {
-  localStorage.setItem("nexushr_users", JSON.stringify(users));
+
+function clearSession() {
+  localStorage.removeItem("nexushr_idToken");
+  localStorage.removeItem("nexushr_token_expiry");
+  localStorage.removeItem("nexushr_challenge");
 }
-function ensureDemoUser() {
-  const users = getUsers();
-  if (!users.find(u => u.email === DEMO_USER.email)) {
-    users.push(DEMO_USER);
-    saveUsers(users);
+
+/* ============================================
+   LOGIN (COGNITO)
+============================================ */
+async function login(email, password) {
+  const url = `https://cognito-idp.${config.region}.amazonaws.com/`;
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-amz-json-1.1",
+      "X-Amz-Target": "AWSCognitoIdentityProviderService.InitiateAuth"
+    },
+    body: JSON.stringify({
+      AuthFlow: "USER_PASSWORD_AUTH",
+      ClientId: config.clientId,
+      AuthParameters: {
+        USERNAME: email,
+        PASSWORD: password
+      }
+    })
+  });
+
+  const data = await response.json();
+
+  if (data.ChallengeName === "NEW_PASSWORD_REQUIRED") {
+    // Store session token for the password-change step
+    localStorage.setItem("nexushr_challenge", JSON.stringify({
+      session: data.Session,
+      username: email
+    }));
+    return { challenge: "NEW_PASSWORD_REQUIRED" };
   }
+
+  if (data.AuthenticationResult) {
+    setToken(data.AuthenticationResult.IdToken, data.AuthenticationResult.ExpiresIn);
+    return { success: true };
+  }
+
+  // Surface Cognito error as friendly message
+  const code = data.__type || "";
+  if (code.includes("NotAuthorizedException"))   return { success: false, message: "Incorrect email or password." };
+  if (code.includes("UserNotFoundException"))     return { success: false, message: "No account found with this email." };
+  if (code.includes("UserNotConfirmedException")) return { success: false, message: "Account not confirmed. Contact your administrator." };
+  return { success: false, message: data.message || "Sign-in failed." };
+}
+
+/* ============================================
+   HANDLE NEW PASSWORD CHALLENGE
+============================================ */
+async function respondToNewPassword(newPassword) {
+  const stored = JSON.parse(localStorage.getItem("nexushr_challenge") || "null");
+  if (!stored) return { success: false, message: "No pending challenge. Please sign in again." };
+
+  const url = `https://cognito-idp.${config.region}.amazonaws.com/`;
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-amz-json-1.1",
+      "X-Amz-Target": "AWSCognitoIdentityProviderService.RespondToAuthChallenge"
+    },
+    body: JSON.stringify({
+      ChallengeName: "NEW_PASSWORD_REQUIRED",
+      ClientId: config.clientId,
+      Session: stored.session,
+      ChallengeResponses: {
+        USERNAME: stored.username,
+        NEW_PASSWORD: newPassword
+      }
+    })
+  });
+
+  const data = await response.json();
+
+  if (data.AuthenticationResult) {
+    localStorage.removeItem("nexushr_challenge");
+    setToken(data.AuthenticationResult.IdToken, data.AuthenticationResult.ExpiresIn);
+    return { success: true };
+  }
+
+  return { success: false, message: data.message || "Failed to set password." };
+}
+
+/* ============================================
+   AUTH FETCH (SECURE API CALLS)
+
+   IMPORTANT: Cognito Authorizer expects the raw JWT
+   in the Authorization header — NOT "Bearer <token>".
+   Sending "Bearer ..." causes 401 Unauthorized.
+============================================ */
+async function authFetch(url, options = {}) {
+  const token = getToken();
+  if (!token) {
+    window.location.href = "login.html";
+    throw new Error("Not authenticated");
+  }
+
+  return fetch(url, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...(options.headers || {}),
+     "Authorization": `Bearer ${token}`   // ← raw token, no "Bearer" prefix
+    }
+  });
+}
+
+/* ============================================
+   AUTH GUARD
+============================================ */
+function requireAuth() {
+  if (!getToken()) {
+    window.location.href = "login.html";
+    return false;
+  }
+  return true;
+}
+
+/* ============================================
+   LOGOUT
+============================================ */
+function logout() {
+  clearSession();
+  showToast("Signed out.", "info");
+  setTimeout(() => {
+    window.location.href = "login.html";
+  }, 800);
 }
 
 /* ============================================
@@ -56,102 +188,9 @@ function toggleTheme() {
 }
 
 /* ============================================
-   NAVBAR INJECTION
+   TOAST  (proper DOM — replaces the alert() hack)
 ============================================ */
-function buildNavbar(activePage) {
-  const session = getSession();
-  const initials = session ? session.name.split(" ").map(w => w[0]).slice(0,2).join("").toUpperCase() : "?";
-
-  const pages = [
-    { href: "index.html",      label: "Home" },
-    { href: "employee.html",   label: "Directory" },
-    { href: "operations.html", label: "Operations" },
-    { href: "update.html",     label: "Update" },
-    { href: "project.html",    label: "About" },
-    { href: "contact.html",    label: "Contact" },
-  ];
-
-  const links = pages.map(p =>
-    `<a href="${p.href}" class="nav-link${activePage === p.href ? " active" : ""}">${p.label}</a>`
-  ).join("");
-
-  const userSection = session ? `
-    <div class="user-menu-wrap">
-      <button class="user-btn" id="userMenuBtn" onclick="toggleUserMenu()">
-        <div class="user-avatar">${initials}</div>
-        <span class="user-name">${session.name}</span>
-        <span class="user-caret">▾</span>
-      </button>
-      <div class="user-dropdown" id="userDropdown">
-        <div class="dropdown-header">
-          <div class="dropdown-user-name">${session.name}</div>
-          <div class="dropdown-user-email">${session.email}</div>
-        </div>
-        <a href="employee.html" class="dropdown-item">👥 Directory</a>
-        <a href="operations.html" class="dropdown-item">⚙️ Operations</a>
-        <a href="update.html" class="dropdown-item">✏️ Update Employee</a>
-        <button class="dropdown-item danger" onclick="logout()">🚪 Sign Out</button>
-      </div>
-    </div>
-    <a href="operations.html" class="btn-nav">+ Add Employee</a>
-  ` : `
-    <a href="login.html" class="btn-nav">Sign In</a>
-  `;
-
-  document.getElementById("navbar").innerHTML = `
-    <a href="index.html" class="nav-brand">
-      <div class="nav-brand-icon">N</div>
-      <span class="nav-brand-name">NexusHR</span>
-    </a>
-    <div class="nav-links">${links}</div>
-    <div class="nav-right">
-      <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="Toggle theme">🌙</button>
-      ${userSection}
-    </div>
-  `;
-
-  initTheme(); // re-apply after rebuild to set icon
-  document.getElementById("themeToggle").textContent =
-    (document.documentElement.getAttribute("data-theme") === "dark") ? "☀️" : "🌙";
-
-  // Close dropdown when clicking outside
-  document.addEventListener("click", e => {
-    const wrap = document.getElementById("userMenuBtn");
-    const dd   = document.getElementById("userDropdown");
-    if (wrap && dd && !wrap.contains(e.target) && !dd.contains(e.target)) {
-      dd.classList.remove("open");
-    }
-  });
-}
-
-function toggleUserMenu() {
-  document.getElementById("userDropdown")?.classList.toggle("open");
-}
-
-/* ============================================
-   AUTH GUARD — call on protected pages
-============================================ */
-function requireAuth() {
-  if (!getSession()) {
-    window.location.href = "login.html";
-    return false;
-  }
-  return true;
-}
-
-/* ============================================
-   LOGOUT
-============================================ */
-function logout() {
-  clearSession();
-  showToast("Signed out. See you soon!", "info");
-  setTimeout(() => { window.location.href = "login.html"; }, 900);
-}
-
-/* ============================================
-   TOAST
-============================================ */
-function showToast(message, type = "info", duration = 4000) {
+function showToast(message, type = "info", duration = 3500) {
   let container = document.getElementById("toastContainer");
   if (!container) {
     container = document.createElement("div");
@@ -159,13 +198,15 @@ function showToast(message, type = "info", duration = 4000) {
     container.className = "toast-container";
     document.body.appendChild(container);
   }
+
   const icons = { success: "✓", error: "✕", info: "ℹ" };
   const toast = document.createElement("div");
   toast.className = `toast ${type}`;
   toast.innerHTML = `<span>${icons[type] || "ℹ"}</span><span>${message}</span>`;
   container.appendChild(toast);
+
   setTimeout(() => {
-    toast.style.transition = "all 0.3s";
+    toast.style.transition = "all 0.3s ease";
     toast.style.opacity = "0";
     toast.style.transform = "translateY(8px)";
     setTimeout(() => toast.remove(), 320);
@@ -173,7 +214,7 @@ function showToast(message, type = "info", duration = 4000) {
 }
 
 /* ============================================
-   FILE TO BASE64
+   FILE TO BASE64 (used by addEmployee)
 ============================================ */
 function getBase64(file) {
   return new Promise((resolve, reject) => {
@@ -186,6 +227,5 @@ function getBase64(file) {
 
 /* ---- Init on every page ---- */
 document.addEventListener("DOMContentLoaded", () => {
-  ensureDemoUser();
   initTheme();
 });
