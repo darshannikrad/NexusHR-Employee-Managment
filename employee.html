@@ -149,7 +149,8 @@ function renderCards(list) {
 
 async function loadAll() {
   try {
-    const res  = await fetch(API_URL);
+    // ✅ authFetch — sends JWT token so API Gateway lets the request through
+    const res  = await authFetch(API_URL);
     const raw  = await res.json();
     allEmployees = Array.isArray(raw.employees) ? raw.employees : (Array.isArray(raw) ? raw : []);
     renderCards(allEmployees);
@@ -176,14 +177,16 @@ function closeModal() {
   document.getElementById("deleteModal").classList.remove("open");
   pendingDeleteId = null;
 }
+
 async function confirmDelete() {
   if (!pendingDeleteId) return;
   const btn = document.getElementById("confirmDelBtn");
   btn.innerHTML = '<div class="spinner"></div>';
   btn.disabled = true;
   try {
-    const res = await fetch(API_URL, {
-      method: "DELETE", headers: {"Content-Type": "application/json"},
+    // ✅ authFetch — DELETE also needs the token
+    const res = await authFetch(API_URL, {
+      method: "DELETE",
       body: JSON.stringify({ empID: pendingDeleteId })
     });
     if (!res.ok) throw new Error();
@@ -196,7 +199,10 @@ async function confirmDelete() {
     btn.innerHTML = "Delete"; btn.disabled = false;
   }
 }
-document.getElementById("deleteModal").addEventListener("click", e => { if (e.target.id === "deleteModal") closeModal(); });
+
+document.getElementById("deleteModal").addEventListener("click", e => {
+  if (e.target.id === "deleteModal") closeModal();
+});
 
 // ---- LIGHTBOX ----
 function openPhoto(url, name, role, dept) {
@@ -211,7 +217,9 @@ function closeLightbox() {
   document.body.style.overflow = "";
   setTimeout(() => { document.getElementById("lightboxImg").src = ""; }, 300);
 }
-document.addEventListener("keydown", e => { if (e.key === "Escape") { closeLightbox(); closeModal(); } });
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape") { closeLightbox(); closeModal(); }
+});
 
 loadAll();
 </script>
