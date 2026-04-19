@@ -1,12 +1,9 @@
 /* ============================================
-   NEXUSHR — auth.js (REAL AUTH - COGNITO)
+   NEXUSHR — auth.js (FINAL FIXED)
 ============================================ */
 
 const API_URL = "https://8arwk9zb75.execute-api.eu-north-1.amazonaws.com/Dev/employee";
 
-/* ============================================
-   COGNITO CONFIG
-============================================ */
 const config = {
   region: "eu-north-1",
   userPoolId: "eu-north-1_ubj9SI8XP",
@@ -14,7 +11,7 @@ const config = {
 };
 
 /* ============================================
-   SESSION  (localStorage + expiry check)
+   SESSION
 ============================================ */
 function getToken() {
   const expiry = localStorage.getItem("nexushr_token_expiry");
@@ -37,37 +34,45 @@ function clearSession() {
 }
 
 /* ============================================
-   LOGIN (COGNITO)
-   Called as: loginUser(email, password)
+   LOGIN (FIXED)
 ============================================ */
-async function loginUser(email, password) {
+async function loginUser(input, password) {
   const url = `https://cognito-idp.${config.region}.amazonaws.com/`;
 
-  const response = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/x-amz-json-1.1",
-      "X-Amz-Target": "AWSCognitoIdentityProviderService.InitiateAuth"
-    },
-    body: JSON.stringify({
-      AuthFlow: "USER_PASSWORD_AUTH",
-      ClientId: config.clientId,
-      AuthParameters: {
-        USERNAME: email,
-        PASSWORD: password
-      }
-    })
-  });
+  async function attemptLogin(username) {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-amz-json-1.1",
+        "X-Amz-Target": "AWSCognitoIdentityProviderService.InitiateAuth"
+      },
+      body: JSON.stringify({
+        AuthFlow: "USER_PASSWORD_AUTH",
+        ClientId: config.clientId,
+        AuthParameters: {
+          USERNAME: username,
+          PASSWORD: password
+        }
+      })
+    });
 
-  const data = await response.json();
+    return res.json();
+  }
+
+  // Try input
+  let data = await attemptLogin(input);
+
+  // If email → try username fallback
+  if (data.__type && input.includes("@")) {
+    const username = input.split("@")[0];
+    data = await attemptLogin(username);
+  }
 
   if (data.ChallengeName === "NEW_PASSWORD_REQUIRED") {
-    // Save session so respondToNewPasswordChallenge can use it
     localStorage.setItem("nexushr_challenge", JSON.stringify({
       session: data.Session,
-      username: email
+      username: input.includes("@") ? input.split("@")[0] : input
     }));
-    // Return the raw Cognito response so login.html can check ChallengeName directly
     return data;
   }
 
@@ -76,26 +81,29 @@ async function loginUser(email, password) {
     return data;
   }
 
-  // Throw a readable error so login.html catch block gets it
+  console.error("COGNITO ERROR:", data);
+
   const code = data.__type || "";
-  if (code.includes("NotAuthorizedException"))   throw new Error("Incorrect email or password.");
-  if (code.includes("UserNotFoundException"))     throw new Error("No account found with this email.");
-  if (code.includes("UserNotConfirmedException")) throw new Error("Account not confirmed. Contact your administrator.");
+
+  if (code.includes("NotAuthorizedException"))
+    throw new Error("Incorrect email or password.");
+
+  if (code.includes("UserNotFoundException"))
+    throw new Error("User not found.");
+
   throw new Error(data.message || "Sign-in failed.");
 }
 
 /* ============================================
-   HANDLE NEW PASSWORD CHALLENGE
-   Called as: respondToNewPasswordChallenge(sessionData, newPassword)
-   sessionData = the raw Cognito response from loginUser()
+   NEW PASSWORD CHALLENGE
 ============================================ */
 async function respondToNewPasswordChallenge(sessionData, newPassword) {
   const stored = JSON.parse(localStorage.getItem("nexushr_challenge") || "null");
-  if (!stored) throw new Error("No pending challenge. Please sign in again.");
+  if (!stored) throw new Error("No pending challenge.");
 
   const url = `https://cognito-idp.${config.region}.amazonaws.com/`;
 
-  const response = await fetch(url, {
+  const res = await fetch(url, {
     method: "POST",
     headers: {
       "Content-Type": "application/x-amz-json-1.1",
@@ -112,7 +120,7 @@ async function respondToNewPasswordChallenge(sessionData, newPassword) {
     })
   });
 
-  const data = await response.json();
+  const data = await res.json();
 
   if (data.AuthenticationResult) {
     localStorage.removeItem("nexushr_challenge");
@@ -120,12 +128,11 @@ async function respondToNewPasswordChallenge(sessionData, newPassword) {
     return data;
   }
 
-  throw new Error(data.message || "Failed to set new password.");
+  throw new Error(data.message || "Failed to set password.");
 }
 
 /* ============================================
-   AUTH FETCH — attaches JWT to every API call
-   FIX: Cognito Authorizer needs raw token, NOT "Bearer <token>"
+   AUTH FETCH (FIXED)
 ============================================ */
 async function authFetch(url, options = {}) {
   const token = getToken();
@@ -139,13 +146,13 @@ async function authFetch(url, options = {}) {
     headers: {
       "Content-Type": "application/json",
       ...(options.headers || {}),
-      "Authorization": token        // ← raw JWT, no "Bearer" prefix
+      "Authorization": `Bearer ${token}`   // 🔥 FIXED
     }
   });
 }
 
 /* ============================================
-   AUTH GUARD — call at top of protected pages
+   AUTH GUARD
 ============================================ */
 function requireAuth() {
   if (!getToken()) {
@@ -160,67 +167,5 @@ function requireAuth() {
 ============================================ */
 function logout() {
   clearSession();
-  showToast("Signed out.", "info");
-  setTimeout(() => {
-    window.location.href = "login.html";
-  }, 800);
+  window.location.href = "login.html";
 }
-
-/* ============================================
-   THEME
-============================================ */
-function applyTheme(theme) {
-  document.documentElement.setAttribute("data-theme", theme);
-  localStorage.setItem("nexushr_theme", theme);
-  const btn = document.getElementById("themeToggle");
-  if (btn) btn.textContent = theme === "dark" ? "☀️" : "🌙";
-}
-function initTheme() {
-  const saved = localStorage.getItem("nexushr_theme") || "light";
-  applyTheme(saved);
-}
-function toggleTheme() {
-  const current = document.documentElement.getAttribute("data-theme") || "light";
-  applyTheme(current === "dark" ? "light" : "dark");
-}
-
-/* ============================================
-   TOAST
-============================================ */
-function showToast(message, type = "info", duration = 3500) {
-  let container = document.getElementById("toastContainer");
-  if (!container) {
-    container = document.createElement("div");
-    container.id = "toastContainer";
-    container.className = "toast-container";
-    document.body.appendChild(container);
-  }
-  const icons = { success: "✓", error: "✕", info: "ℹ" };
-  const toast = document.createElement("div");
-  toast.className = `toast ${type}`;
-  toast.innerHTML = `<span>${icons[type] || "ℹ"}</span><span>${message}</span>`;
-  container.appendChild(toast);
-  setTimeout(() => {
-    toast.style.transition = "all 0.3s ease";
-    toast.style.opacity = "0";
-    toast.style.transform = "translateY(8px)";
-    setTimeout(() => toast.remove(), 320);
-  }, duration);
-}
-
-/* ============================================
-   FILE TO BASE64
-============================================ */
-function getBase64(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result.split(",")[1]);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
-
-/* ---- Init on every page ---- */
-document.addEventListener("DOMContentLoaded", () => {
-  initTheme();
-});
