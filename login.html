@@ -1,112 +1,89 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8" />
-  <title>Login - NexusHR</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
+  <title>NexusHR Login</title>
   <style>
     body {
-      margin: 0;
-      font-family: Arial, sans-serif;
       background: #0b1c2c;
       color: white;
       display: flex;
       justify-content: center;
       align-items: center;
       height: 100vh;
+      font-family: Arial;
     }
 
     .card {
       background: #1c2f45;
       padding: 30px;
-      border-radius: 12px;
-      width: 320px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+      border-radius: 10px;
+      width: 300px;
     }
 
-    h2 {
-      margin-bottom: 20px;
-    }
-
-    input {
+    input, button {
       width: 100%;
       padding: 10px;
-      margin-bottom: 15px;
-      border-radius: 6px;
+      margin: 10px 0;
+      border-radius: 5px;
       border: none;
     }
 
     button {
-      width: 100%;
-      padding: 10px;
-      background: linear-gradient(90deg, #2db3ff, #6a5cff);
-      border: none;
-      border-radius: 6px;
+      background: #4f7cff;
       color: white;
-      cursor: pointer;
     }
 
     .error {
-      background: #ff4d4d;
-      padding: 10px;
-      border-radius: 6px;
-      margin-bottom: 10px;
+      background: red;
+      padding: 8px;
       display: none;
     }
 
-    .password-wrapper {
+    .wrapper {
       position: relative;
     }
 
     .toggle {
       position: absolute;
       right: 10px;
-      top: 50%;
-      transform: translateY(-50%);
+      top: 35%;
       cursor: pointer;
       font-size: 12px;
-      color: #ccc;
-    }
-
-    #newPasswordSection {
-      display: none;
     }
   </style>
 </head>
+
 <body>
 
 <div class="card">
-  <h2>NexusHR Login</h2>
+  <h2>Login</h2>
 
   <div class="error" id="errorBox"></div>
 
-  <input type="text" id="email" placeholder="Email or Username" />
+  <input id="email" placeholder="Email or Username">
 
-  <div class="password-wrapper">
-    <input type="password" id="password" placeholder="Password" />
-    <span class="toggle" onclick="togglePassword()">Show</span>
+  <div class="wrapper">
+    <input type="password" id="password" placeholder="Password">
+    <span class="toggle" onclick="toggle()">Show</span>
   </div>
 
   <button onclick="login()">Sign In</button>
-
-  <!-- NEW PASSWORD SECTION -->
-  <div id="newPasswordSection">
-    <h3>Set New Password</h3>
-
-    <div class="password-wrapper">
-      <input type="password" id="newPassword" placeholder="New Password" />
-      <span class="toggle" onclick="toggleNewPassword()">Show</span>
-    </div>
-
-    <button onclick="completeNewPassword()">Set Password</button>
-  </div>
 </div>
 
 <script src="auth.js"></script>
 
 <script>
-let sessionData = null;
+function toggle() {
+  const p = document.getElementById("password");
+  const t = event.target;
+  if (p.type === "password") {
+    p.type = "text";
+    t.innerText = "Hide";
+  } else {
+    p.type = "password";
+    t.innerText = "Show";
+  }
+}
 
 function showError(msg) {
   const box = document.getElementById("errorBox");
@@ -114,63 +91,15 @@ function showError(msg) {
   box.style.display = "block";
 }
 
-function togglePassword() {
-  const input = document.getElementById("password");
-  const toggle = event.target;
-
-  if (input.type === "password") {
-    input.type = "text";
-    toggle.innerText = "Hide";
-  } else {
-    input.type = "password";
-    toggle.innerText = "Show";
-  }
-}
-
-function toggleNewPassword() {
-  const input = document.getElementById("newPassword");
-  const toggle = event.target;
-
-  if (input.type === "password") {
-    input.type = "text";
-    toggle.innerText = "Hide";
-  } else {
-    input.type = "password";
-    toggle.innerText = "Show";
-  }
-}
-
 async function login() {
   const email = document.getElementById("email").value.trim();
   const password = document.getElementById("password").value.trim();
 
   try {
-    const res = await loginUser(email, password);
-
-    // NEW PASSWORD REQUIRED FLOW
-    if (res.ChallengeName === "NEW_PASSWORD_REQUIRED") {
-      sessionData = res;
-      document.getElementById("newPasswordSection").style.display = "block";
-      return;
-    }
-
+    await loginUser(email, password);
     window.location.href = "index.html";
-
-  } catch (err) {
-    console.error(err);
-    showError("Incorrect email or password");
-  }
-}
-
-async function completeNewPassword() {
-  const newPassword = document.getElementById("newPassword").value.trim();
-
-  try {
-    await respondToNewPasswordChallenge(sessionData, newPassword);
-    window.location.href = "index.html";
-  } catch (err) {
-    console.error(err);
-    showError("Failed to set new password");
+  } catch (e) {
+    showError(e.message);
   }
 }
 </script>
