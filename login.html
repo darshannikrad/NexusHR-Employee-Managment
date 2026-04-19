@@ -1,173 +1,179 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sign In — NexusHR</title>
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8" />
+  <title>Login - NexusHR</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #0b1c2c;
+      color: white;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+    .card {
+      background: #1c2f45;
+      padding: 30px;
+      border-radius: 12px;
+      width: 320px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+    }
+
+    h2 {
+      margin-bottom: 20px;
+    }
+
+    input {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 15px;
+      border-radius: 6px;
+      border: none;
+    }
+
+    button {
+      width: 100%;
+      padding: 10px;
+      background: linear-gradient(90deg, #2db3ff, #6a5cff);
+      border: none;
+      border-radius: 6px;
+      color: white;
+      cursor: pointer;
+    }
+
+    .error {
+      background: #ff4d4d;
+      padding: 10px;
+      border-radius: 6px;
+      margin-bottom: 10px;
+      display: none;
+    }
+
+    .password-wrapper {
+      position: relative;
+    }
+
+    .toggle {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      cursor: pointer;
+      font-size: 12px;
+      color: #ccc;
+    }
+
+    #newPasswordSection {
+      display: none;
+    }
+  </style>
 </head>
 <body>
 
-<button class="theme-toggle" onclick="toggleTheme()" style="position:fixed;top:20px;right:20px">🌙</button>
+<div class="card">
+  <h2>NexusHR Login</h2>
 
-<div class="auth-screen">
-  <div class="auth-box">
+  <div class="error" id="errorBox"></div>
 
-    <div class="auth-logo">
-      <div class="auth-logo-icon">N</div>
-      <div class="auth-logo-name">NexusHR</div>
+  <input type="text" id="email" placeholder="Email or Username" />
+
+  <div class="password-wrapper">
+    <input type="password" id="password" placeholder="Password" />
+    <span class="toggle" onclick="togglePassword()">Show</span>
+  </div>
+
+  <button onclick="login()">Sign In</button>
+
+  <!-- NEW PASSWORD SECTION -->
+  <div id="newPasswordSection">
+    <h3>Set New Password</h3>
+
+    <div class="password-wrapper">
+      <input type="password" id="newPassword" placeholder="New Password" />
+      <span class="toggle" onclick="toggleNewPassword()">Show</span>
     </div>
 
-    <div class="auth-error" id="authError"></div>
-
-    <!-- ===== SIGN IN FORM ===== -->
-    <div id="loginForm">
-      <div class="auth-title">Welcome back</div>
-      <div class="auth-sub">Sign in to continue</div>
-
-      <div class="form-group">
-        <label class="form-label">Email</label>
-        <input type="email" class="form-input" id="loginEmail" placeholder="you@company.com" autocomplete="email">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Password</label>
-        <input type="password" class="form-input" id="loginPassword" placeholder="••••••••" autocomplete="current-password">
-      </div>
-
-      <button class="btn-submit" id="loginBtn" onclick="doLogin()">Sign In</button>
-
-      <div style="margin-top:14px; font-size:12px; color:var(--text-muted, #888); text-align:center;">
-        🔒 Access is granted by your administrator.
-      </div>
-    </div>
-
-    <!-- ===== NEW PASSWORD FORM =====
-         Shown automatically on first login when admin created the account.
-         Replaces the insecure browser prompt().
-    -->
-    <div id="newPasswordForm" style="display:none">
-      <div class="auth-title">Set your password</div>
-      <div class="auth-sub">
-        Your administrator created this account.<br>Please choose a new password to continue.
-      </div>
-
-      <div class="form-group">
-        <label class="form-label">New Password</label>
-        <input type="password" class="form-input" id="newPassword"
-          placeholder="Min 8 characters" autocomplete="new-password">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Confirm Password</label>
-        <input type="password" class="form-input" id="confirmPassword"
-          placeholder="Repeat password" autocomplete="new-password">
-      </div>
-
-      <button class="btn-submit" id="newPasswordBtn" onclick="doSetNewPassword()">
-        Set Password &amp; Sign In
-      </button>
-    </div>
-
+    <button onclick="completeNewPassword()">Set Password</button>
   </div>
 </div>
 
-<div class="toast-container" id="toastContainer"></div>
-
 <script src="auth.js"></script>
+
 <script>
-  // Already logged in? go home
-  if (getToken()) window.location.href = "index.html";
+let sessionData = null;
 
-  function showError(msg) {
-    const el = document.getElementById("authError");
-    el.textContent = msg;
-    el.classList.add("show");
-    el.style.display = "block";
+function showError(msg) {
+  const box = document.getElementById("errorBox");
+  box.innerText = msg;
+  box.style.display = "block";
+}
+
+function togglePassword() {
+  const input = document.getElementById("password");
+  const toggle = event.target;
+
+  if (input.type === "password") {
+    input.type = "text";
+    toggle.innerText = "Hide";
+  } else {
+    input.type = "password";
+    toggle.innerText = "Show";
   }
-  function clearError() {
-    const el = document.getElementById("authError");
-    el.textContent = "";
-    el.classList.remove("show");
-    el.style.display = "none";
+}
+
+function toggleNewPassword() {
+  const input = document.getElementById("newPassword");
+  const toggle = event.target;
+
+  if (input.type === "password") {
+    input.type = "text";
+    toggle.innerText = "Hide";
+  } else {
+    input.type = "password";
+    toggle.innerText = "Show";
   }
+}
 
-  /* ---- SIGN IN ---- */
-  async function doLogin() {
-    clearError();
-    const email    = document.getElementById("loginEmail").value.trim();
-    const password = document.getElementById("loginPassword").value;
-    const btn      = document.getElementById("loginBtn");
+async function login() {
+  const email = document.getElementById("email").value.trim();
+  const password = document.getElementById("password").value.trim();
 
-    if (!email || !password) { showError("Enter email and password."); return; }
+  try {
+    const res = await loginUser(email, password);
 
-    btn.innerHTML = '<div class="spinner"></div> Signing in…';
-    btn.disabled = true;
-
-    try {
-      const result = await login(email, password);
-
-      if (result.challenge === "NEW_PASSWORD_REQUIRED") {
-        // Swap to the inline password-change form — no prompt()
-        document.getElementById("loginForm").style.display = "none";
-        document.getElementById("newPasswordForm").style.display = "";
-        return;
-      }
-
-      if (result.success) {
-        showToast("Welcome back! 👋", "success");
-        setTimeout(() => { window.location.href = "index.html"; }, 700);
-        return;
-      }
-
-      showError(result.message || "Invalid credentials.");
-    } catch (err) {
-      console.error(err);
-      showError("Login failed. Please try again.");
+    // NEW PASSWORD REQUIRED FLOW
+    if (res.ChallengeName === "NEW_PASSWORD_REQUIRED") {
+      sessionData = res;
+      document.getElementById("newPasswordSection").style.display = "block";
+      return;
     }
 
-    btn.innerHTML = "Sign In";
-    btn.disabled = false;
+    window.location.href = "index.html";
+
+  } catch (err) {
+    console.error(err);
+    showError("Incorrect email or password");
   }
+}
 
-  /* ---- SET NEW PASSWORD (first-time login) ---- */
-  async function doSetNewPassword() {
-    clearError();
-    const newPw  = document.getElementById("newPassword").value;
-    const confPw = document.getElementById("confirmPassword").value;
-    const btn    = document.getElementById("newPasswordBtn");
+async function completeNewPassword() {
+  const newPassword = document.getElementById("newPassword").value.trim();
 
-    if (!newPw || !confPw)   { showError("Please fill in both fields."); return; }
-    if (newPw.length < 8)    { showError("Password must be at least 8 characters."); return; }
-    if (newPw !== confPw)    { showError("Passwords do not match."); return; }
-
-    btn.innerHTML = '<div class="spinner"></div> Setting password…';
-    btn.disabled = true;
-
-    try {
-      const result = await respondToNewPassword(newPw);
-
-      if (result.success) {
-        showToast("Password set! Welcome 🎉", "success");
-        setTimeout(() => { window.location.href = "index.html"; }, 700);
-        return;
-      }
-
-      showError(result.message || "Failed to set password.");
-    } catch (err) {
-      console.error(err);
-      showError("Something went wrong. Please try again.");
-    }
-
-    btn.innerHTML = "Set Password & Sign In";
-    btn.disabled = false;
+  try {
+    await respondToNewPasswordChallenge(sessionData, newPassword);
+    window.location.href = "index.html";
+  } catch (err) {
+    console.error(err);
+    showError("Failed to set new password");
   }
-
-  /* ---- Enter key support ---- */
-  document.addEventListener("keydown", e => {
-    if (e.key !== "Enter") return;
-    const newPwVisible = document.getElementById("newPasswordForm").style.display !== "none";
-    if (newPwVisible) doSetNewPassword(); else doLogin();
-  });
+}
 </script>
+
 </body>
 </html>
