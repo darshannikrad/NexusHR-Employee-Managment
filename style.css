@@ -738,3 +738,196 @@ body {
   .user-name { display: none; }
   .update-panel { padding: 28px 20px; }
 }
+
+/* ── APPEND THIS BLOCK TO THE BOTTOM OF YOUR style.css ── */
+
+/* Navbar right section & logout button */
+.nav-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.btn-logout {
+  background: transparent;
+  border: 1px solid var(--border, rgba(255,255,255,0.15));
+  color: var(--text-muted, #888);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 6px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+  white-space: nowrap;
+}
+
+.btn-logout:hover {
+  background: rgba(255, 80, 80, 0.12);
+  border-color: rgba(255, 80, 80, 0.4);
+  color: #ff6b6b;
+}
+
+/* Mobile nav */
+.nav-toggle {
+  display: none;
+  background: none;
+  border: none;
+  color: var(--text, #fff);
+  font-size: 20px;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+
+.nav-mobile {
+  display: none;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 24px 16px;
+  border-top: 1px solid var(--border, rgba(255,255,255,0.08));
+}
+
+.nav-mobile.open {
+  display: flex;
+}
+
+@media (max-width: 700px) {
+  .nav-links { display: none; }
+  .nav-toggle { display: block; }
+  .nav-right { display: none; }
+}
+
+/* Employee avatar image */
+.emp-avatar {
+  position: relative;
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  overflow: hidden;
+  flex-shrink: 0;
+  cursor: pointer;
+  background: var(--surface2, rgba(255,255,255,0.06));
+}
+
+.emp-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  border-radius: 14px;
+}
+
+.emp-avatar-fallback {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--accent, #7c6ff7);
+  background: rgba(124,111,247,0.12);
+  border-radius: 14px;
+}
+
+/* Delete button on employee cards */
+.emp-delete-btn {
+  margin-top: 12px;
+  width: 100%;
+  padding: 8px;
+  background: transparent;
+  border: 1px solid rgba(255,80,80,0.25);
+  color: #ff6b6b;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.2s;
+}
+.emp-delete-btn:hover { background: rgba(255,80,80,0.1); }
+
+/* Empty state */
+.empty-state {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text-muted, #888);
+  font-size: 15px;
+  line-height: 1.8;
+}
+
+/* Modal open state */
+.modal-overlay.open { display: flex; }
+
+/* Lightbox open state */
+.lightbox-overlay.open { display: flex; }
+
+/* Contact card */
+.contact-wrap {
+  display: flex;
+  justify-content: center;
+  padding: 0 24px 80px;
+}
+
+.contact-card {
+  background: var(--surface, rgba(255,255,255,0.04));
+  border: 1px solid var(--border, rgba(255,255,255,0.08));
+  border-radius: 20px;
+  padding: 48px;
+  max-width: 480px;
+  width: 100%;
+  text-align: center;
+}
+
+.contact-avatar {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: var(--accent, #7c6ff7);
+  color: #fff;
+  font-size: 24px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 20px;
+}
+
+.contact-name {
+  font-size: 22px;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+.contact-desc {
+  color: var(--text-muted, #888);
+  font-size: 14px;
+  line-height: 1.7;
+  margin-bottom: 24px;
+}
+
+.contact-email-link {
+  display: inline-block;
+  color: var(--accent, #7c6ff7);
+  text-decoration: none;
+  font-size: 14px;
+  padding: 10px 20px;
+  border: 1px solid var(--accent, #7c6ff7);
+  border-radius: 10px;
+  transition: background 0.2s;
+}
+.contact-email-link:hover {
+  background: rgba(124,111,247,0.12);
+}
+
+/* Employee card meta */
+.emp-card { display: flex; flex-direction: column; }
+.emp-card-top { display: flex; gap: 14px; align-items: flex-start; margin-bottom: 14px; }
+.emp-info { flex: 1; min-width: 0; }
+.emp-name { font-weight: 600; font-size: 15px; margin-bottom: 2px; }
+.emp-role { font-size: 12px; color: var(--text-muted, #888); }
+.emp-meta { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-muted, #888); margin-bottom: 6px; }
+.emp-dept { background: rgba(124,111,247,0.12); color: var(--accent, #7c6ff7); padding: 2px 8px; border-radius: 6px; }
+.emp-id { font-family: monospace; }
+.emp-email { font-size: 12px; color: var(--text-muted, #888); word-break: break-all; }
