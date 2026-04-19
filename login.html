@@ -1,108 +1,227 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>NexusHR Login</title>
-  <style>
-    body {
-      background: #0b1c2c;
-      color: white;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      font-family: Arial;
-    }
-
-    .card {
-      background: #1c2f45;
-      padding: 30px;
-      border-radius: 10px;
-      width: 300px;
-    }
-
-    input, button {
-      width: 100%;
-      padding: 10px;
-      margin: 10px 0;
-      border-radius: 5px;
-      border: none;
-    }
-
-    button {
-      background: #4f7cff;
-      color: white;
-    }
-
-    .error {
-      background: red;
-      padding: 8px;
-      display: none;
-    }
-
-    .wrapper {
-      position: relative;
-    }
-
-    .toggle {
-      position: absolute;
-      right: 10px;
-      top: 35%;
-      cursor: pointer;
-      font-size: 12px;
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Directory — NexusHR</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
 </head>
-
 <body>
 
-<div class="card">
-  <h2>Login</h2>
-
-  <div class="error" id="errorBox"></div>
-
-  <input id="email" placeholder="Email or Username">
-
-  <div class="wrapper">
-    <input type="password" id="password" placeholder="Password">
-    <span class="toggle" onclick="toggle()">Show</span>
-  </div>
-
-  <button onclick="login()">Sign In</button>
+<div class="ambient">
+  <div class="blob blob-1"></div>
+  <div class="blob blob-2"></div>
 </div>
 
+<nav class="navbar" id="navbar"></nav>
+
+<main style="position:relative;z-index:1;">
+  <div class="page-header">
+    <div class="page-eyebrow">Employee Directory</div>
+    <h1 class="page-title">Your Team</h1>
+    <p class="page-sub">All active employees — live from DynamoDB</p>
+  </div>
+
+  <div class="toolbar">
+    <div class="search-wrap">
+      <span class="search-icon">🔍</span>
+      <input type="text" class="search-input" id="searchInput" placeholder="Search by name, role, department…">
+    </div>
+    <div class="count-badge" id="countBadge">Loading…</div>
+  </div>
+
+  <div class="employee-grid-wrap">
+    <div class="employee-grid" id="employeeGrid">
+      <div class="skeleton-card">
+        <div style="display:flex;gap:12px;align-items:center;margin-bottom:18px">
+          <div class="skeleton sk-avatar"></div>
+          <div style="flex:1"><div class="skeleton sk-line" style="width:70%"></div><div class="skeleton sk-line-sm"></div></div>
+        </div>
+        <div class="skeleton sk-line"></div><div class="skeleton sk-line" style="width:80%"></div>
+      </div>
+      <div class="skeleton-card">
+        <div style="display:flex;gap:12px;align-items:center;margin-bottom:18px">
+          <div class="skeleton sk-avatar"></div>
+          <div style="flex:1"><div class="skeleton sk-line" style="width:60%"></div><div class="skeleton sk-line-sm"></div></div>
+        </div>
+        <div class="skeleton sk-line"></div><div class="skeleton sk-line" style="width:90%"></div>
+      </div>
+      <div class="skeleton-card">
+        <div style="display:flex;gap:12px;align-items:center;margin-bottom:18px">
+          <div class="skeleton sk-avatar"></div>
+          <div style="flex:1"><div class="skeleton sk-line" style="width:75%"></div><div class="skeleton sk-line-sm"></div></div>
+        </div>
+        <div class="skeleton sk-line"></div><div class="skeleton sk-line" style="width:65%"></div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- Delete Confirm Modal -->
+<div class="modal-overlay" id="deleteModal">
+  <div class="modal">
+    <h3>⚠️ Remove Employee?</h3>
+    <p>This will permanently delete <span class="modal-id" id="modalEmpId"></span> from the system. This action cannot be undone.</p>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="btn-confirm-del" id="confirmDelBtn" onclick="confirmDelete()">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- Photo Lightbox -->
+<div class="lightbox-overlay" id="lightbox" onclick="closeLightbox()">
+  <button class="lightbox-close" onclick="closeLightbox()">✕</button>
+  <div class="lightbox-inner" onclick="event.stopPropagation()">
+    <img id="lightboxImg" src="" alt="" class="lightbox-img">
+    <div class="lightbox-caption">
+      <div class="lightbox-name" id="lightboxName"></div>
+      <div class="lightbox-meta" id="lightboxMeta"></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<footer class="footer">
+  <div class="footer-inner">NexusHR — Built with ❤️ by YUD</div>
+</footer>
+
 <script src="auth.js"></script>
-
 <script>
-function toggle() {
-  const p = document.getElementById("password");
-  const t = event.target;
-  if (p.type === "password") {
-    p.type = "text";
-    t.innerText = "Hide";
-  } else {
-    p.type = "password";
-    t.innerText = "Show";
+requireAuth();
+buildNavbar("employee.html");
+
+let allEmployees = [];
+let pendingDeleteId = null;
+
+const DEPT_COLORS = { Engineering: "blue", HR: "teal", Finance: "amber", Marketing: "teal", Sales: "amber", Design: "blue" };
+function deptColor(d) { return DEPT_COLORS[d] || "blue"; }
+function initials(n)  { return n ? n.split(" ").map(w => w[0]).slice(0,2).join("").toUpperCase() : "?"; }
+
+function renderCards(list) {
+  const grid  = document.getElementById("employeeGrid");
+  const badge = document.getElementById("countBadge");
+  badge.textContent = `${list.length} employee${list.length !== 1 ? "s" : ""}`;
+
+  if (!list.length) {
+    grid.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-state-icon">🏙️</div>
+        <h3>No employees found</h3>
+        <p>Try a different search or <a href="operations.html" style="color:var(--accent)">add new employees</a>.</p>
+      </div>`;
+    return;
   }
+
+  grid.innerHTML = list.map((emp, i) => `
+    <div class="emp-card" style="animation-delay:${i * 0.055}s">
+      <div class="emp-card-header">
+        ${emp.photoUrl
+          ? `<img src="${emp.photoUrl}" class="emp-avatar" alt="${emp.name}" onclick="openPhoto('${emp.photoUrl}','${(emp.name||'').replace(/'/g,"\\'")}','${emp.role||''}','${emp.department||''}')" title="Click to view photo">`
+          : `<div class="emp-avatar-placeholder">${initials(emp.name)}</div>`}
+        <div>
+          <div class="emp-name">${emp.name ?? "—"}</div>
+          <div class="emp-role">${emp.role ?? "—"}</div>
+        </div>
+      </div>
+      <div class="emp-card-body">
+        <div class="emp-meta-row">
+          <span class="emp-meta-icon">✉️</span>
+          <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${emp.email ?? "—"}</span>
+        </div>
+        <div class="emp-meta-row">
+          <span class="emp-meta-icon">🏢</span>
+          <span class="dept-badge ${deptColor(emp.department)}">${emp.department ?? "—"}</span>
+        </div>
+        <div class="emp-meta-row">
+          <span class="emp-meta-icon">🪪</span>
+          <span class="emp-id-badge">${emp.empID ?? "—"}</span>
+        </div>
+      </div>
+      <div class="emp-card-footer">
+        <button class="btn-danger" onclick="openDeleteModal('${emp.empID}')">🗑️ Remove</button>
+      </div>
+    </div>`).join("");
 }
 
-function showError(msg) {
-  const box = document.getElementById("errorBox");
-  box.innerText = msg;
-  box.style.display = "block";
-}
-
-async function login() {
-  const email = document.getElementById("email").value.trim();
-  const password = document.getElementById("password").value.trim();
-
+async function loadAll() {
   try {
-    await loginUser(email, password);
-    window.location.href = "index.html";
-  } catch (e) {
-    showError(e.message);
+    // ✅ authFetch — sends JWT token so API Gateway lets the request through
+    const res  = await authFetch(API_URL);
+    const raw  = await res.json();
+    allEmployees = Array.isArray(raw.employees) ? raw.employees : (Array.isArray(raw) ? raw : []);
+    renderCards(allEmployees);
+  } catch(e) {
+    document.getElementById("employeeGrid").innerHTML =
+      `<div class="empty-state"><div class="empty-state-icon">⚠️</div><h3>Could not load employees</h3><p>${e.message}</p></div>`;
+    document.getElementById("countBadge").textContent = "Error";
   }
 }
-</script>
 
+document.getElementById("searchInput").addEventListener("input", function() {
+  const q = this.value.toLowerCase();
+  renderCards(allEmployees.filter(e =>
+    [e.name, e.role, e.department, e.email, e.empID].some(f => f?.toLowerCase().includes(q))
+  ));
+});
+
+function openDeleteModal(id) {
+  pendingDeleteId = id;
+  document.getElementById("modalEmpId").textContent = id;
+  document.getElementById("deleteModal").classList.add("open");
+}
+function closeModal() {
+  document.getElementById("deleteModal").classList.remove("open");
+  pendingDeleteId = null;
+}
+
+async function confirmDelete() {
+  if (!pendingDeleteId) return;
+  const btn = document.getElementById("confirmDelBtn");
+  btn.innerHTML = '<div class="spinner"></div>';
+  btn.disabled = true;
+  try {
+    // ✅ authFetch — DELETE also needs the token
+    const res = await authFetch(API_URL, {
+      method: "DELETE",
+      body: JSON.stringify({ empID: pendingDeleteId })
+    });
+    if (!res.ok) throw new Error();
+    showToast("Employee removed successfully", "success");
+    closeModal();
+    await loadAll();
+  } catch {
+    showToast("Failed to delete employee", "error");
+  } finally {
+    btn.innerHTML = "Delete"; btn.disabled = false;
+  }
+}
+
+document.getElementById("deleteModal").addEventListener("click", e => {
+  if (e.target.id === "deleteModal") closeModal();
+});
+
+// ---- LIGHTBOX ----
+function openPhoto(url, name, role, dept) {
+  document.getElementById("lightboxImg").src   = url;
+  document.getElementById("lightboxName").textContent = name;
+  document.getElementById("lightboxMeta").textContent = [role, dept].filter(Boolean).join(" · ");
+  document.getElementById("lightbox").classList.add("open");
+  document.body.style.overflow = "hidden";
+}
+function closeLightbox() {
+  document.getElementById("lightbox").classList.remove("open");
+  document.body.style.overflow = "";
+  setTimeout(() => { document.getElementById("lightboxImg").src = ""; }, 300);
+}
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape") { closeLightbox(); closeModal(); }
+});
+
+loadAll();
+</script>
 </body>
 </html>
