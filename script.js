@@ -13,61 +13,53 @@ let allEmployees = [];
 /* ============================================
    LOAD ALL EMPLOYEES (FIXED)
 ============================================ */
-async function loadAll() {
+async function loadEmployees() {
+  const tbody = document.getElementById("employeeTableBody");
+  if (!tbody) return;
+
+  tbody.innerHTML = "";
+
+  const BUCKET_URL = "https://employee-profile-yash-2026-project.s3.eu-north-1.amazonaws.com/";
+
   try {
-    const token = localStorage.getItem("nexushr_idToken");
-
-    const res = await fetch(API_URL, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": token
-      }
-    });
-
-    console.log("STATUS:", res.status);
-
-    const raw = await res.json();
-    console.log("DATA:", raw);
+    const res  = await authFetch(API_URL);
+    const raw  = await res.json();
 
     const list = Array.isArray(raw.employees)
       ? raw.employees
       : (Array.isArray(raw) ? raw : []);
 
-    // 🔥 DIRECT RENDER (NO DEPENDENCY)
-    const grid = document.getElementById("employeeGrid");
-
     if (!list.length) {
-      grid.innerHTML = `<div class="empty-state"><h3>No employees found</h3></div>`;
+      tbody.innerHTML = `<tr><td colspan="6">No employees found</td></tr>`;
       return;
     }
 
-    grid.innerHTML = list.map(emp => `
-      <div class="emp-card">
-        <div class="emp-card-header">
-          <div class="emp-avatar-placeholder">${(emp.name || "?")[0]}</div>
-          <div>
-            <div class="emp-name">${emp.name ?? "-"}</div>
-            <div class="emp-role">${emp.role ?? "-"}</div>
-          </div>
-        </div>
-        <div class="emp-card-body">
-          <div>${emp.email ?? "-"}</div>
-          <div>${emp.department ?? "-"}</div>
-          <div>${emp.empID ?? "-"}</div>
-        </div>
-      </div>
-    `).join("");
+    list.forEach(emp => {
+      const imageUrl = emp.photoUrl
+        ? BUCKET_URL + emp.photoUrl   // 🔥 ONLY FIX
+        : null;
+
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td>${emp.name ?? "-"}</td>
+        <td>${emp.email ?? "-"}</td>
+        <td>${emp.role ?? "-"}</td>
+        <td>${emp.department ?? "-"}</td>
+        <td>
+          ${
+            imageUrl
+              ? `<img src="${imageUrl}" height="50" />`
+              : "-"
+          }
+        </td>
+        <td>${emp.empID ?? "-"}</td>
+      `;
+      tbody.appendChild(row);
+    });
 
   } catch (e) {
-    console.error("REAL ERROR:", e);
-
-    document.getElementById("employeeGrid").innerHTML =
-      `<div class="empty-state">
-        <div class="empty-state-icon">⚠️</div>
-        <h3>Could not load employees</h3>
-        <p>${e.message}</p>
-      </div>`;
+    console.error(e);
+    tbody.innerHTML = `<tr><td colspan="6">Error loading employees</td></tr>`;
   }
 }
 
