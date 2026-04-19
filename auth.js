@@ -95,7 +95,7 @@ function requireAuth() {
 }
 
 // ─── AUTH FETCH ───────────────────────────────────────────────────────────────
-// Use this instead of fetch() for all API calls — attaches the Cognito JWT token.
+// Use instead of fetch() for all API calls — attaches Cognito JWT automatically.
 // Cognito Authorizer expects raw token, NOT "Bearer <token>".
 async function authFetch(url, options = {}) {
   const token = sessionStorage.getItem("nexushr_token");
@@ -124,12 +124,12 @@ function doLogout() {
 
 // ─── NAVBAR ───────────────────────────────────────────────────────────────────
 function buildNavbar(activePage) {
+  // ✅ Global guard — no matter how many times this is called, navbar builds once only
+  if (window.__navbarBuilt) return;
+  window.__navbarBuilt = true;
+
   const nav = document.getElementById("navbar");
   if (!nav) return;
-
-  // ✅ Guard: if navbar already built, don't run again (prevents double theme button)
-  if (nav.dataset.built === "1") return;
-  nav.dataset.built = "1";
 
   const links = [
     { href: "index.html",      label: "Home"      },
@@ -160,7 +160,6 @@ function buildNavbar(activePage) {
     </div>
   `;
 
-  // Set theme icon after navbar DOM is ready
   const _t = localStorage.getItem("nexushr_theme") || "dark";
   const _b = document.getElementById("themeToggle");
   if (_b) _b.textContent = _t === "dark" ? "☀️" : "🌙";
