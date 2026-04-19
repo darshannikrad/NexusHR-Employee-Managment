@@ -1,28 +1,27 @@
 /*
-  script.js — NexusHR (FINAL WORKING)
+  script.js — NexusHR (FINAL WORKING GRID VERSION)
 */
 
 // 🔐 Protect page
 requireAuth();
 
 /* ============================================
+   GLOBAL STATE
+============================================ */
+let allEmployees = [];
+
+/* ============================================
    LOAD ALL EMPLOYEES (FIXED)
 ============================================ */
 async function loadAll() {
-  const tbody = document.getElementById("employeeTableBody");
-  if (!tbody) return;
-
-  tbody.innerHTML = "";
-
   try {
     const token = localStorage.getItem("nexushr_idToken");
-    console.log("TOKEN:", token);
 
     const res = await fetch(API_URL, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": token   // 🔥 IMPORTANT (NO Bearer)
+        "Authorization": token
       }
     });
 
@@ -31,33 +30,22 @@ async function loadAll() {
     const raw = await res.json();
     console.log("DATA:", raw);
 
-    if (!res.ok) throw new Error("API Error");
-
     const list = Array.isArray(raw.employees)
       ? raw.employees
       : (Array.isArray(raw) ? raw : []);
 
-    if (!list.length) {
-      tbody.innerHTML = `<tr><td colspan="6">No employees found</td></tr>`;
-      return;
-    }
-
-    list.forEach(emp => {
-      const row = document.createElement("tr");
-      row.innerHTML = `
-        <td>${emp.name ?? "-"}</td>
-        <td>${emp.email ?? "-"}</td>
-        <td>${emp.role ?? "-"}</td>
-        <td>${emp.department ?? "-"}</td>
-        <td>${emp.photoUrl ? `<img src="${emp.photoUrl}" height="50">` : "-"}</td>
-        <td>${emp.empID ?? "-"}</td>
-      `;
-      tbody.appendChild(row);
-    });
+    // 🔥 FIX: connect API → UI
+    allEmployees = list;
+    renderCards(allEmployees);
 
   } catch (e) {
-    console.error("LOAD ERROR:", e);
-    tbody.innerHTML = `<tr><td colspan="6">Error loading employees</td></tr>`;
+    console.error(e);
+
+    document.getElementById("employeeGrid").innerHTML =
+      `<div class="empty-state">
+        <div class="empty-state-icon">⚠️</div>
+        <h3>Could not load employees</h3>
+      </div>`;
   }
 }
 
@@ -101,6 +89,8 @@ async function addEmployee() {
 
     showToast("Employee added!", "success");
 
+    loadAll(); // 🔥 refresh UI
+
   } catch (e) {
     console.error(e);
     showToast(e.message || "Failed to add", "error");
@@ -110,13 +100,8 @@ async function addEmployee() {
 /* ============================================
    DELETE EMPLOYEE
 ============================================ */
-async function deleteEmployeeById() {
-  const empID = document.getElementById("deleteEmpId")?.value?.trim();
-
-  if (!empID) {
-    showToast("Enter Employee ID", "error");
-    return;
-  }
+async function confirmDelete() {
+  if (!pendingDeleteId) return;
 
   try {
     const token = localStorage.getItem("nexushr_idToken");
@@ -127,12 +112,15 @@ async function deleteEmployeeById() {
         "Content-Type": "application/json",
         "Authorization": token
       },
-      body: JSON.stringify({ empID })
+      body: JSON.stringify({ empID: pendingDeleteId })
     });
 
     if (!res.ok) throw new Error();
 
-    showToast("Employee deleted", "success");
+    showToast("Employee removed", "success");
+
+    closeModal();
+    loadAll(); // 🔥 refresh UI
 
   } catch (e) {
     console.error(e);
@@ -164,7 +152,7 @@ async function updateEmployee() {
   if (department) data.department = department;
 
   if (!Object.keys(data).length) {
-    showToast("Enter at least one field to update", "error");
+    showToast("Enter at least one field", "error");
     return;
   }
 
@@ -187,16 +175,18 @@ async function updateEmployee() {
 
     if (!res.ok) throw new Error(result.message || "Failed");
 
-    showToast(result.message || "Employee updated!", "success");
+    showToast("Employee updated!", "success");
+
+    loadAll(); // 🔥 refresh UI
 
   } catch (e) {
     console.error(e);
-    showToast(e.message || "Error updating employee", "error");
+    showToast(e.message || "Error updating", "error");
   }
 }
 
 /* ============================================
-   AUTO LOAD (IMPORTANT)
+   AUTO LOAD
 ============================================ */
 document.addEventListener("DOMContentLoaded", () => {
   loadAll();
