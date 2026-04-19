@@ -11,6 +11,22 @@ const S3_BUCKET   = "employee-profile-yash-2026-project";
 const S3_REGION   = "eu-north-1"; // ✅ confirmed
 const S3_BASE_URL = `https://${S3_BUCKET}.s3.${S3_REGION}.amazonaws.com`;
 
+// ─── THEME ────────────────────────────────────────────────────────────────────
+function toggleTheme() {
+  const current = document.documentElement.getAttribute("data-theme") || "dark";
+  const next    = current === "dark" ? "light" : "dark";
+  document.documentElement.setAttribute("data-theme", next);
+  localStorage.setItem("nexushr_theme", next);
+  const btn = document.getElementById("themeToggle");
+  if (btn) btn.textContent = next === "dark" ? "☀️" : "🌙";
+}
+
+// Apply saved theme immediately on every page load
+(function applyTheme() {
+  const saved = localStorage.getItem("nexushr_theme") || "dark";
+  document.documentElement.setAttribute("data-theme", saved);
+})();
+
 // ─── LOAD COGNITO SDK (amazon-cognito-identity-js via CDN) ────────────────────
 // This loads the SDK synchronously before any auth function is called.
 (function loadCognitoSDK() {
@@ -116,6 +132,7 @@ function buildNavbar(activePage) {
       </a>
       <div class="nav-links">${linksHtml}</div>
       <div class="nav-right">
+        <button id="themeToggle" class="btn-theme-toggle" onclick="toggleTheme()" title="Toggle dark/light mode"></button>
         <button class="btn-logout" onclick="doLogout()">Logout</button>
       </div>
       <button class="nav-toggle" onclick="toggleMobileNav()">☰</button>
@@ -125,6 +142,10 @@ function buildNavbar(activePage) {
       <button class="btn-logout" style="margin:12px 0 4px" onclick="doLogout()">Logout</button>
     </div>
   `;
+  // Set theme icon after navbar DOM is ready
+  const _t = localStorage.getItem("nexushr_theme") || "dark";
+  const _b = document.getElementById("themeToggle");
+  if (_b) _b.textContent = _t === "dark" ? "☀️" : "🌙";
 }
 
 function toggleMobileNav() {
