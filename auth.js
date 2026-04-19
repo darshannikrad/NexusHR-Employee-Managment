@@ -4,10 +4,11 @@ const USER_POOL_ID   = "eu-north-1_ubj9SI8XP";
 const CLIENT_ID      = "844o3jv36g0bppt9sbfns0he5";
 
 // ─── API & S3 CONFIG ──────────────────────────────────────────────────────────
+// 🔴 Replace with your actual API Gateway invoke URL
 const API_URL     = "https://8arwk9zb75.execute-api.eu-north-1.amazonaws.com/Dev/employee";
 
 const S3_BUCKET   = "employee-profile-yash-2026-project";
-const S3_REGION   = "eu-north-1";
+const S3_REGION   = "eu-north-1"; // ✅ confirmed
 const S3_BASE_URL = `https://${S3_BUCKET}.s3.${S3_REGION}.amazonaws.com`;
 
 // ─── THEME ────────────────────────────────────────────────────────────────────
@@ -20,12 +21,14 @@ function toggleTheme() {
   if (btn) btn.textContent = next === "dark" ? "☀️" : "🌙";
 }
 
+// Apply saved theme immediately on every page load
 (function applyTheme() {
   const saved = localStorage.getItem("nexushr_theme") || "dark";
   document.documentElement.setAttribute("data-theme", saved);
 })();
 
-// ─── LOAD COGNITO SDK ─────────────────────────────────────────────────────────
+// ─── LOAD COGNITO SDK (amazon-cognito-identity-js via CDN) ────────────────────
+// This loads the SDK synchronously before any auth function is called.
 (function loadCognitoSDK() {
   if (window.AmazonCognitoIdentity) return;
   const s = document.createElement("script");
@@ -42,6 +45,7 @@ function getUserPool() {
 }
 
 // ─── LOGIN ────────────────────────────────────────────────────────────────────
+// Called from login.html as: await loginUser(email, password)
 function loginUser(email, password) {
   return new Promise((resolve, reject) => {
     const pool = getUserPool();
@@ -74,6 +78,7 @@ function loginUser(email, password) {
 }
 
 // ─── REQUIRE AUTH ─────────────────────────────────────────────────────────────
+// Call on every protected page. Redirects to login.html if session is invalid.
 function requireAuth() {
   const pool        = getUserPool();
   const cognitoUser = pool.getCurrentUser();
@@ -89,27 +94,9 @@ function requireAuth() {
       window.location.href = "login.html";
       return;
     }
+    // Refresh stored token with the latest valid one
     sessionStorage.setItem("nexushr_token", session.getIdToken().getJwtToken());
     sessionStorage.setItem("nexushr_user",  cognitoUser.getUsername());
-  });
-}
-
-// ─── AUTH FETCH ───────────────────────────────────────────────────────────────
-// Use instead of fetch() for all API calls — attaches Cognito JWT automatically.
-// Cognito Authorizer expects raw token, NOT "Bearer <token>".
-async function authFetch(url, options = {}) {
-  const token = sessionStorage.getItem("nexushr_token");
-  if (!token) {
-    window.location.href = "login.html";
-    throw new Error("Not authenticated");
-  }
-  return fetch(url, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...(options.headers || {}),
-      "Authorization": token    // ← raw JWT, no "Bearer" prefix
-    }
   });
 }
 
@@ -124,10 +111,6 @@ function doLogout() {
 
 // ─── NAVBAR ───────────────────────────────────────────────────────────────────
 function buildNavbar(activePage) {
-  // ✅ Global guard — no matter how many times this is called, navbar builds once only
-  if (window.__navbarBuilt) return;
-  window.__navbarBuilt = true;
-
   const nav = document.getElementById("navbar");
   if (!nav) return;
 
@@ -159,7 +142,7 @@ function buildNavbar(activePage) {
       <button class="btn-logout" style="margin:12px 0 4px" onclick="doLogout()">Logout</button>
     </div>
   `;
-
+  // Set theme icon after navbar DOM is ready
   const _t = localStorage.getItem("nexushr_theme") || "dark";
   const _b = document.getElementById("themeToggle");
   if (_b) _b.textContent = _t === "dark" ? "☀️" : "🌙";
@@ -171,6 +154,7 @@ function toggleMobileNav() {
 }
 
 // ─── S3 IMAGE URL RESOLVER ───────────────────────────────────────────────────
+// Converts s3:// URIs, plain keys, or existing https:// URLs → proper public HTTPS URL
 function resolveImageUrl(raw) {
   if (!raw) return null;
   if (raw.startsWith("https://")) return raw;
@@ -178,6 +162,7 @@ function resolveImageUrl(raw) {
     const key = raw.replace(/^s3:\/\/[^/]+\//, "");
     return `${S3_BASE_URL}/${key}`;
   }
+  // Plain key e.g. "employees/photo.jpg"
   return `${S3_BASE_URL}/${raw}`;
 }
 
@@ -196,7 +181,7 @@ function showToast(msg, type = "success") {
   }, 3500);
 }
 
-// ─── UTILITY ──────────────────────────────────────────────────────────────────
+// ─── UTILITY ─────────────────────────────────────────────────────────────────
 function getBase64(file) {
   return new Promise((resolve, reject) => {
     const r = new FileReader();
@@ -205,3 +190,6 @@ function getBase64(file) {
     r.readAsDataURL(file);
   });
 }
+
+
+eu-north-1
