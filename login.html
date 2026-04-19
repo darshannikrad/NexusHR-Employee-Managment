@@ -4,53 +4,27 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Sign In — NexusHR</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-<!-- Theme toggle (top-right, standalone) -->
-<button class="theme-toggle" id="themeToggle" onclick="toggleTheme()"
-  style="position:fixed;top:20px;right:20px;z-index:50" title="Toggle theme">🌙</button>
-
-<div class="ambient">
-  <div class="blob blob-1"></div>
-  <div class="blob blob-2"></div>
-  <div class="blob blob-3"></div>
-</div>
+<button class="theme-toggle" onclick="toggleTheme()" style="position:fixed;top:20px;right:20px">🌙</button>
 
 <div class="auth-screen">
   <div class="auth-box">
 
-    <!-- Logo -->
     <div class="auth-logo">
       <div class="auth-logo-icon">N</div>
       <div class="auth-logo-name">NexusHR</div>
     </div>
 
-    <!-- Tabs -->
-    <div class="auth-tabs">
-      <button class="auth-tab active" id="tab-login" onclick="switchTab('login')">Sign In</button>
-      <button class="auth-tab" id="tab-signup" onclick="switchTab('signup')">Create Account</button>
-    </div>
-
-    <!-- Error -->
     <div class="auth-error" id="authError"></div>
 
-    <!-- LOGIN FORM -->
+    <!-- ===== SIGN IN FORM ===== -->
     <div id="loginForm">
       <div class="auth-title">Welcome back</div>
-      <div class="auth-sub">Sign in to access the employee directory</div>
-
-      <!-- Demo badge -->
-      <div class="auth-demo-badge">
-        <span>💡</span>
-        <div>
-          <strong>Try the demo account</strong>
-          <code>Email: demo@nexushr.com · Password: demo1234</code>
-        </div>
-      </div>
+      <div class="auth-sub">Sign in to continue</div>
 
       <div class="form-group">
         <label class="form-label">Email</label>
@@ -63,34 +37,35 @@
 
       <button class="btn-submit" id="loginBtn" onclick="doLogin()">Sign In</button>
 
-      <div class="auth-footer-link">
-        No account? <a href="#" onclick="switchTab('signup')">Create one free</a>
+      <div style="margin-top:14px; font-size:12px; color:var(--text-muted, #888); text-align:center;">
+        🔒 Access is granted by your administrator.
       </div>
     </div>
 
-    <!-- SIGNUP FORM -->
-    <div id="signupForm" style="display:none">
-      <div class="auth-title">Create account</div>
-      <div class="auth-sub">Join NexusHR to manage your team</div>
-
-      <div class="form-group">
-        <label class="form-label">Full Name</label>
-        <input type="text" class="form-input" id="signupName" placeholder="Your name" autocomplete="name">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Email</label>
-        <input type="email" class="form-input" id="signupEmail" placeholder="you@company.com" autocomplete="email">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Password</label>
-        <input type="password" class="form-input" id="signupPassword" placeholder="Min 6 characters" autocomplete="new-password">
+    <!-- ===== NEW PASSWORD FORM =====
+         Shown automatically on first login when admin created the account.
+         Replaces the insecure browser prompt().
+    -->
+    <div id="newPasswordForm" style="display:none">
+      <div class="auth-title">Set your password</div>
+      <div class="auth-sub">
+        Your administrator created this account.<br>Please choose a new password to continue.
       </div>
 
-      <button class="btn-submit" id="signupBtn" onclick="doSignup()">Create Account</button>
-
-      <div class="auth-footer-link">
-        Already have an account? <a href="#" onclick="switchTab('login')">Sign in</a>
+      <div class="form-group">
+        <label class="form-label">New Password</label>
+        <input type="password" class="form-input" id="newPassword"
+          placeholder="Min 8 characters" autocomplete="new-password">
       </div>
+      <div class="form-group">
+        <label class="form-label">Confirm Password</label>
+        <input type="password" class="form-input" id="confirmPassword"
+          placeholder="Repeat password" autocomplete="new-password">
+      </div>
+
+      <button class="btn-submit" id="newPasswordBtn" onclick="doSetNewPassword()">
+        Set Password &amp; Sign In
+      </button>
     </div>
 
   </div>
@@ -100,82 +75,99 @@
 
 <script src="auth.js"></script>
 <script>
-// Redirect if already logged in
-if (getSession()) window.location.href = "index.html";
+  // Already logged in? go home
+  if (getToken()) window.location.href = "index.html";
 
-function switchTab(tab) {
-  document.getElementById("loginForm").style.display  = tab === "login"  ? "" : "none";
-  document.getElementById("signupForm").style.display = tab === "signup" ? "" : "none";
-  document.getElementById("tab-login").classList.toggle("active",  tab === "login");
-  document.getElementById("tab-signup").classList.toggle("active", tab === "signup");
-  document.getElementById("authError").classList.remove("show");
-}
-
-function showError(msg) {
-  const el = document.getElementById("authError");
-  el.textContent = msg;
-  el.classList.add("show");
-}
-
-function doLogin() {
-  const email    = document.getElementById("loginEmail").value.trim();
-  const password = document.getElementById("loginPassword").value;
-  const btn = document.getElementById("loginBtn");
-
-  if (!email || !password) { showError("Please enter your email and password."); return; }
-
-  btn.innerHTML = '<div class="spinner"></div> Signing in…';
-  btn.disabled = true;
-
-  setTimeout(() => {
-    const users = getUsers();
-    const user  = users.find(u => u.email.toLowerCase() === email.toLowerCase() && u.password === password);
-
-    if (user) {
-      setSession({ name: user.name, email: user.email });
-      showToast(`Welcome back, ${user.name}! 👋`, "success");
-      setTimeout(() => { window.location.href = "index.html"; }, 800);
-    } else {
-      showError("Incorrect email or password. Try the demo account above.");
-      btn.innerHTML = "Sign In";
-      btn.disabled = false;
-    }
-  }, 700);
-}
-
-function doSignup() {
-  const name     = document.getElementById("signupName").value.trim();
-  const email    = document.getElementById("signupEmail").value.trim();
-  const password = document.getElementById("signupPassword").value;
-  const btn = document.getElementById("signupBtn");
-
-  if (!name || !email || !password) { showError("Please fill in all fields."); return; }
-  if (password.length < 6)          { showError("Password must be at least 6 characters."); return; }
-
-  const users = getUsers();
-  if (users.find(u => u.email.toLowerCase() === email.toLowerCase())) {
-    showError("An account with this email already exists. Sign in instead.");
-    return;
+  function showError(msg) {
+    const el = document.getElementById("authError");
+    el.textContent = msg;
+    el.classList.add("show");
+    el.style.display = "block";
+  }
+  function clearError() {
+    const el = document.getElementById("authError");
+    el.textContent = "";
+    el.classList.remove("show");
+    el.style.display = "none";
   }
 
-  btn.innerHTML = '<div class="spinner"></div> Creating…';
-  btn.disabled = true;
+  /* ---- SIGN IN ---- */
+  async function doLogin() {
+    clearError();
+    const email    = document.getElementById("loginEmail").value.trim();
+    const password = document.getElementById("loginPassword").value;
+    const btn      = document.getElementById("loginBtn");
 
-  setTimeout(() => {
-    users.push({ name, email, password });
-    saveUsers(users);
-    setSession({ name, email });
-    showToast(`Account created! Welcome, ${name}! 🎉`, "success");
-    setTimeout(() => { window.location.href = "index.html"; }, 800);
-  }, 700);
-}
+    if (!email || !password) { showError("Enter email and password."); return; }
 
-// Enter key support
-document.addEventListener("keydown", e => {
-  if (e.key !== "Enter") return;
-  const loginVisible = document.getElementById("loginForm").style.display !== "none";
-  if (loginVisible) doLogin(); else doSignup();
-});
+    btn.innerHTML = '<div class="spinner"></div> Signing in…';
+    btn.disabled = true;
+
+    try {
+      const result = await login(email, password);
+
+      if (result.challenge === "NEW_PASSWORD_REQUIRED") {
+        // Swap to the inline password-change form — no prompt()
+        document.getElementById("loginForm").style.display = "none";
+        document.getElementById("newPasswordForm").style.display = "";
+        return;
+      }
+
+      if (result.success) {
+        showToast("Welcome back! 👋", "success");
+        setTimeout(() => { window.location.href = "index.html"; }, 700);
+        return;
+      }
+
+      showError(result.message || "Invalid credentials.");
+    } catch (err) {
+      console.error(err);
+      showError("Login failed. Please try again.");
+    }
+
+    btn.innerHTML = "Sign In";
+    btn.disabled = false;
+  }
+
+  /* ---- SET NEW PASSWORD (first-time login) ---- */
+  async function doSetNewPassword() {
+    clearError();
+    const newPw  = document.getElementById("newPassword").value;
+    const confPw = document.getElementById("confirmPassword").value;
+    const btn    = document.getElementById("newPasswordBtn");
+
+    if (!newPw || !confPw)   { showError("Please fill in both fields."); return; }
+    if (newPw.length < 8)    { showError("Password must be at least 8 characters."); return; }
+    if (newPw !== confPw)    { showError("Passwords do not match."); return; }
+
+    btn.innerHTML = '<div class="spinner"></div> Setting password…';
+    btn.disabled = true;
+
+    try {
+      const result = await respondToNewPassword(newPw);
+
+      if (result.success) {
+        showToast("Password set! Welcome 🎉", "success");
+        setTimeout(() => { window.location.href = "index.html"; }, 700);
+        return;
+      }
+
+      showError(result.message || "Failed to set password.");
+    } catch (err) {
+      console.error(err);
+      showError("Something went wrong. Please try again.");
+    }
+
+    btn.innerHTML = "Set Password & Sign In";
+    btn.disabled = false;
+  }
+
+  /* ---- Enter key support ---- */
+  document.addEventListener("keydown", e => {
+    if (e.key !== "Enter") return;
+    const newPwVisible = document.getElementById("newPasswordForm").style.display !== "none";
+    if (newPwVisible) doSetNewPassword(); else doLogin();
+  });
 </script>
 </body>
 </html>
