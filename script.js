@@ -1,23 +1,37 @@
 /*
-  script.js — NexusHR (Cognito secured)
-  All auth handled via auth.js
+  script.js — NexusHR (FINAL WORKING)
 */
 
-// Protect page
+// 🔐 Protect page
 requireAuth();
 
 /* ============================================
-   LOAD EMPLOYEES
+   LOAD ALL EMPLOYEES (FIXED)
 ============================================ */
-async function loadEmployees() {
+async function loadAll() {
   const tbody = document.getElementById("employeeTableBody");
   if (!tbody) return;
 
   tbody.innerHTML = "";
 
   try {
-    const res  = await authFetch(API_URL);
-    const raw  = await res.json();
+    const token = localStorage.getItem("nexushr_idToken");
+    console.log("TOKEN:", token);
+
+    const res = await fetch(API_URL, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": token   // 🔥 IMPORTANT (NO Bearer)
+      }
+    });
+
+    console.log("STATUS:", res.status);
+
+    const raw = await res.json();
+    console.log("DATA:", raw);
+
+    if (!res.ok) throw new Error("API Error");
 
     const list = Array.isArray(raw.employees)
       ? raw.employees
@@ -42,7 +56,7 @@ async function loadEmployees() {
     });
 
   } catch (e) {
-    console.error(e);
+    console.error("LOAD ERROR:", e);
     tbody.innerHTML = `<tr><td colspan="6">Error loading employees</td></tr>`;
   }
 }
@@ -70,8 +84,14 @@ async function addEmployee() {
   }
 
   try {
-    const res = await authFetch(API_URL, {
+    const token = localStorage.getItem("nexushr_idToken");
+
+    const res = await fetch(API_URL, {
       method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": token
+      },
       body: JSON.stringify({ name, email, role, department, imageBase64, imageType })
     });
 
@@ -99,8 +119,14 @@ async function deleteEmployeeById() {
   }
 
   try {
-    const res = await authFetch(API_URL, {
+    const token = localStorage.getItem("nexushr_idToken");
+
+    const res = await fetch(API_URL, {
       method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": token
+      },
       body: JSON.stringify({ empID })
     });
 
@@ -143,10 +169,16 @@ async function updateEmployee() {
   }
 
   try {
-    const res = await authFetch(
+    const token = localStorage.getItem("nexushr_idToken");
+
+    const res = await fetch(
       `https://8arwk9zb75.execute-api.eu-north-1.amazonaws.com/updateStage/employee/${empID}`,
       {
         method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": token
+        },
         body: JSON.stringify(data)
       }
     );
@@ -162,3 +194,10 @@ async function updateEmployee() {
     showToast(e.message || "Error updating employee", "error");
   }
 }
+
+/* ============================================
+   AUTO LOAD (IMPORTANT)
+============================================ */
+document.addEventListener("DOMContentLoaded", () => {
+  loadAll();
+});
