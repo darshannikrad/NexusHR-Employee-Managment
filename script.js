@@ -34,17 +34,39 @@ async function loadAll() {
       ? raw.employees
       : (Array.isArray(raw) ? raw : []);
 
-    // 🔥 FIX: connect API → UI
-    allEmployees = list;
-    renderCards(allEmployees);
+    // 🔥 DIRECT RENDER (NO DEPENDENCY)
+    const grid = document.getElementById("employeeGrid");
+
+    if (!list.length) {
+      grid.innerHTML = `<div class="empty-state"><h3>No employees found</h3></div>`;
+      return;
+    }
+
+    grid.innerHTML = list.map(emp => `
+      <div class="emp-card">
+        <div class="emp-card-header">
+          <div class="emp-avatar-placeholder">${(emp.name || "?")[0]}</div>
+          <div>
+            <div class="emp-name">${emp.name ?? "-"}</div>
+            <div class="emp-role">${emp.role ?? "-"}</div>
+          </div>
+        </div>
+        <div class="emp-card-body">
+          <div>${emp.email ?? "-"}</div>
+          <div>${emp.department ?? "-"}</div>
+          <div>${emp.empID ?? "-"}</div>
+        </div>
+      </div>
+    `).join("");
 
   } catch (e) {
-    console.error(e);
+    console.error("REAL ERROR:", e);
 
     document.getElementById("employeeGrid").innerHTML =
       `<div class="empty-state">
         <div class="empty-state-icon">⚠️</div>
         <h3>Could not load employees</h3>
+        <p>${e.message}</p>
       </div>`;
   }
 }
