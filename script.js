@@ -203,5 +203,5 @@ async function updateEmployee() {
    AUTO LOAD
 ============================================ */
 document.addEventListener("DOMContentLoaded", () => {
-  loadAll();
+  loadEmployees();
 });
