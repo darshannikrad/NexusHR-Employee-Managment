@@ -7,7 +7,7 @@ const API_URL = "https://8arwk9zb75.execute-api.eu-north-1.amazonaws.com/Dev/emp
 const config = {
   region: "eu-north-1",
   userPoolId: "eu-north-1_ubj9SI8XP",
-  clientId: "kvbcpsgg1hrv0gls26e33mk8s"
+  clientId: "2fvf922qla1kkvgkctgpl97h9k"
 };
 
 /* ============================================
