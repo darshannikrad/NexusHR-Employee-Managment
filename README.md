@@ -150,7 +150,7 @@ Open index.html in browser
 ## 👨‍💻 Author
 
 <p align="center">
-  <b>Yash</b><br>
+  <b>Darshan</b><br>
   🎓 PICT Pune<br>
   ☁️ AWS & Full-Stack Developer
 </p>
